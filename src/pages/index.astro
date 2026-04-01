@@ -11,6 +11,28 @@ const contact = "031-721-0082";
 const address = "경기도 성남시 중원구 여수울로15번길 4-4, 107호(여수동)";
 const regNo = "41133-2020-00049";
 ---
+
+<script is:inline>
+	function goToNaverLand() {
+		// 1. 접속 기기 확인
+		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+		
+		let targetUrl = ""; 
+
+		if (isMobile) {
+			// 모바일용 주소로 이동
+			targetUrl = "https://fin.land.naver.com/realtor/tpsxmfjfrhddls?complexNumber=102283&articleTradeTypes=A1";
+		} else {
+			// PC용 주소로 이동 (이미 PC 주소라면 생략 가능)
+			targetUrl = "https://new.land.naver.com?realtorId=tpsxmfjfrhddls";
+		}
+
+		if (targetUrl) {
+			window.location.href = targetUrl;
+		}
+	}
+</script>
+
 <Layout title="여수동 센트럴공인중개사 사무소">
   <Container>
 	<header class="flex flex-col lg:flex-row justify-between items-center my-5">
@@ -63,7 +85,15 @@ const regNo = "41133-2020-00049";
 				<h2 class="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">정직한 중개, 확실한 분석<br/>센트럴이 함께합니다</h2>
 				<p class="text-lg md:text-xl text-slate-300 mb-10 font-light">여수동 아파트·상가·오피스텔 매물 보유 및 맞춤형 컨설팅</p>
 				<div class="flex flex-col sm:flex-row justify-center gap-4">
-					<a href="https://new.land.naver.com?realtorId=tpsxmfjfrhddls" target="_blank" class="bg-[#03C75A] text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-lg transition">N 네이버 실시간 매물보기</a>
+<!--					<a href="https://new.land.naver.com?realtorId=tpsxmfjfrhddls" target="_blank" class="bg-[#03C75A] text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-lg transition">N 네이버 실시간 매물보기</a> -->
+					<!-- href는 빈 링크(#)나 javascript:void(0)로 두고, onclick에 함수를 연결합니다 -->
+					<a 
+					href="javascript:void(0);" 
+					onclick="goToNaverLand()" 
+					class="inline-block bg-[#03C75A] text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-lg transition cursor-pointer"
+					>
+					<span class="mr-2">N</span> 네이버 실시간 매물보기
+					</a>
 					<a href={`tel:${contact}`} class="bg-white text-slate-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-100 transition">전화 상담하기</a>
 				</div>
 			</div>
