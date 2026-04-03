@@ -32,6 +32,47 @@ const regNo = "41133-2020-00049";
 		}
 	}
 </script>
+<!-- 네이버 지도 API 로드 (알려주신 Client ID: a1xlu0xrrm 적용) -->
+<script type="text/javascript" src="https://naver.com"></script>
+
+<script>
+    function initMap() {
+        // 서버에서 받아오는 주소 변수 (예: "서울 강남구 테헤란로 123")
+        const address = "{address}"; 
+
+        // 주소를 좌표로 변환
+        naver.maps.Service.geocode({
+            query: address
+        }, function(status, response) {
+            if (status !== naver.maps.Service.Status.OK) {
+                return console.error('주소를 찾을 수 없습니다. 주소가 정확한지 확인하세요.');
+            }
+
+            const result = response.v2.addresses[0]; // 검색 결과의 첫 번째 항목 사용
+            const coord = new naver.maps.LatLng(result.y, result.x);
+
+            // 지도 초기화
+            const map = new naver.maps.Map('map', {
+                center: coord,
+                zoom: 17, // 적당한 확대 레벨
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: naver.maps.Position.TOP_RIGHT
+                }
+            });
+
+            // 매물 위치에 마커(핀) 꽂기
+            new naver.maps.Marker({
+                position: coord,
+                map: map,
+                animation: naver.maps.Animation.DROP
+            });
+        });
+    }
+
+    // 페이지 로드 완료 시 지도 실행
+    window.onload = initMap;
+</script>
 
 <Layout title="여수동 센트럴공인중개사 사무소">
   <Container>
@@ -156,10 +197,11 @@ const regNo = "41133-2020-00049";
 				<a href="https://naver.me/G0p8taK9" target="_blank" class="text-blue-600 font-bold hover:underline">네이버 지도로 보기 &rarr;</a>
 			</div>
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-				<div class="bg-slate-200 h-96 rounded-3xl overflow-hidden relative shadow-inner">
-					<!-- 실제 네이버 지도 API 연동 전까지 이미지나 더미 표시 -->
+				<!-- 수정된 지도 영역 -->
+				<div id="map" class="bg-slate-200 h-96 rounded-3xl overflow-hidden relative shadow-inner">
+					<!-- API 로딩 전 노출될 배경 -->
 					<div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-						[네이버 지도 영역] <br/> {address}
+						지도를 불러오는 중...
 					</div>
 				</div>
 				<div class="flex flex-col justify-center">
