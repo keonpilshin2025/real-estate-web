@@ -1,0 +1,220 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+
+const siteName = "센트럴공인중개사 사무소";
+const ceoName = "박은미";
+const contact = "031-721-0082";
+const address = "경기도 성남시 중원구 여수울로15번길 4-4, 107호(여수동)";
+const email = "이메일 주소 입력"; // 이메일 있으면 교체
+const effectiveDate = "2026년 1월 1일";
+---
+
+<Layout title={`개인정보처리방침 | ${siteName}`}>
+  <Container>
+    <header class="flex flex-col lg:flex-row justify-between items-center my-5">
+      <div class="flex w-full lg:w-auto items-center justify-between">
+        <a href="/" class="text-lg flex items-center">
+          <span class="font-bold text-slate-800 text-2xl">센트럴공인중개사 사무소</span>
+          <span class="ml-3 bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full font-bold">
+            성남 여수동 전문
+          </span>
+        </a>
+      </div>
+      <div class="hidden lg:flex items-center gap-6">
+        <div class="flex flex-col items-end">
+          <span class="text-[10px] text-slate-400 uppercase tracking-widest">Consulting</span>
+          <a href={`tel:${contact}`} class="text-xl font-bold text-slate-800 hover:text-blue-600 transition">
+            {contact}
+          </a>
+        </div>
+        <a href="/#contact" class="bg-slate-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-slate-800 transition">
+          방문 예약하기
+        </a>
+      </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-6 py-16">
+      <!-- 상단 타이틀 -->
+      <div class="mb-12 pb-8 border-b border-slate-200">
+        <p class="text-sm text-blue-600 font-bold uppercase tracking-widest mb-3">Legal</p>
+        <h1 class="text-4xl font-extrabold text-slate-900 mb-4">개인정보처리방침</h1>
+        <p class="text-slate-500">시행일: {effectiveDate}</p>
+      </div>
+
+      <div class="prose prose-slate max-w-none space-y-10 text-slate-700 leading-relaxed">
+
+        <!-- 1조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제1조 (개인정보의 처리 목적)</h2>
+          <p>{siteName}(이하 "사무소")은 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 개인정보 보호법 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-1 text-slate-600">
+            <li>부동산 매매·임대 중개 서비스 제공</li>
+            <li>상담 및 방문 예약 처리</li>
+            <li>계약 체결 및 이행</li>
+            <li>고객 문의 응대 및 민원 처리</li>
+            <li>서비스 개선을 위한 통계 분석</li>
+          </ul>
+        </section>
+
+        <!-- 2조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제2조 (처리하는 개인정보 항목)</h2>
+          <p>사무소는 다음의 개인정보 항목을 처리하고 있습니다.</p>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-sm border-collapse border border-slate-200 rounded-xl overflow-hidden">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="border border-slate-200 px-4 py-3 text-left font-bold text-slate-700">구분</th>
+                  <th class="border border-slate-200 px-4 py-3 text-left font-bold text-slate-700">수집 항목</th>
+                  <th class="border border-slate-200 px-4 py-3 text-left font-bold text-slate-700">수집 방법</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="border border-slate-200 px-4 py-3">필수</td>
+                  <td class="border border-slate-200 px-4 py-3">성명, 연락처(전화번호)</td>
+                  <td class="border border-slate-200 px-4 py-3">전화, 방문, 홈페이지 상담</td>
+                </tr>
+                <tr class="bg-slate-50">
+                  <td class="border border-slate-200 px-4 py-3">선택</td>
+                  <td class="border border-slate-200 px-4 py-3">이메일, 관심 매물 정보</td>
+                  <td class="border border-slate-200 px-4 py-3">고객 직접 제공</td>
+                </tr>
+                <tr>
+                  <td class="border border-slate-200 px-4 py-3">자동수집</td>
+                  <td class="border border-slate-200 px-4 py-3">접속 IP, 방문 일시, 쿠키</td>
+                  <td class="border border-slate-200 px-4 py-3">홈페이지 접속 시 자동 생성</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 3조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제3조 (개인정보의 처리 및 보유 기간)</h2>
+          <p>사무소는 법령에 따른 개인정보 보유·이용 기간 또는 정보주체로부터 개인정보를 수집 시에 동의받은 개인정보 보유·이용 기간 내에서 개인정보를 처리·보유합니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-1 text-slate-600">
+            <li>상담 및 계약 관련 정보: 계약 종료 후 5년 (상법 및 관련 법령)</li>
+            <li>홈페이지 방문 기록: 3개월</li>
+            <li>기타 고객 문의: 처리 완료 후 6개월</li>
+          </ul>
+        </section>
+
+        <!-- 4조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제4조 (개인정보의 제3자 제공)</h2>
+          <p>사무소는 정보주체의 개인정보를 제1조에서 명시한 목적 범위 내에서만 처리하며, 정보주체의 동의, 법률의 특별한 규정 등 개인정보 보호법 제17조 및 제18조에 해당하는 경우에만 개인정보를 제3자에게 제공합니다.</p>
+          <p class="mt-2">단, 부동산 거래 계약 체결을 위해 필요한 경우 거래 상대방에게 필요 최소한의 정보가 제공될 수 있으며, 이 경우 사전에 고객의 동의를 받습니다.</p>
+        </section>
+
+        <!-- 5조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제5조 (개인정보 처리의 위탁)</h2>
+          <p>사무소는 현재 개인정보 처리 업무를 외부에 위탁하고 있지 않습니다. 향후 위탁 계약 체결 시에는 개인정보 보호법 제26조에 따라 위탁업무 수행 목적 외 개인정보 처리 금지, 기술적·관리적 보호조치, 재위탁 제한, 수탁자에 대한 관리·감독, 손해배상 등에 관한 사항을 계약서 등 문서에 명시하고, 수탁자가 개인정보를 안전하게 처리하는지를 감독하겠습니다.</p>
+        </section>
+
+        <!-- 6조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제6조 (정보주체의 권리·의무 및 행사 방법)</h2>
+          <p>정보주체는 사무소에 대해 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-1 text-slate-600">
+            <li>개인정보 열람 요구</li>
+            <li>오류 등이 있을 경우 정정 요구</li>
+            <li>삭제 요구</li>
+            <li>처리 정지 요구</li>
+          </ul>
+          <p class="mt-3">권리 행사는 전화 또는 방문을 통해 하실 수 있으며, 사무소는 이에 대해 지체 없이 조치하겠습니다.</p>
+        </section>
+
+        <!-- 7조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제7조 (개인정보의 안전성 확보 조치)</h2>
+          <p>사무소는 개인정보 보호법 제29조에 따라 다음과 같이 안전성 확보에 필요한 기술적·관리적 및 물리적 조치를 하고 있습니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-1 text-slate-600">
+            <li>개인정보 취급 직원 최소화 및 교육 실시</li>
+            <li>개인정보에 대한 접근 제한 및 비인가자 접근 통제</li>
+            <li>개인정보를 담은 서류 잠금장치 보관</li>
+            <li>해킹 등에 대비한 기술적 대책 수립</li>
+          </ul>
+        </section>
+
+        <!-- 8조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제8조 (쿠키의 설치·운영 및 거부)</h2>
+          <p>사무소 홈페이지는 방문자의 이용 편의를 위해 쿠키(cookie)를 사용할 수 있습니다. 쿠키는 웹사이트를 운영하는 데 이용되는 서버가 이용자의 브라우저에게 보내는 소량의 정보이며, 이용자의 PC 컴퓨터 내 하드디스크에 저장되기도 합니다.</p>
+          <p class="mt-2">이용자는 쿠키 설치에 대한 선택권을 가지고 있습니다. 브라우저 설정을 통해 쿠키를 허용하거나 거부할 수 있으나, 쿠키 설치를 거부하는 경우 일부 서비스 이용에 불편함이 있을 수 있습니다.</p>
+        </section>
+
+        <!-- 9조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제9조 (개인정보 보호책임자)</h2>
+          <p>사무소는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 정보주체의 개인정보 관련 불만 처리 및 피해 구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.</p>
+          <div class="mt-4 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+            <p class="font-bold text-slate-800 mb-2">▶ 개인정보 보호책임자</p>
+            <ul class="space-y-1 text-slate-600 text-sm">
+              <li><span class="font-medium text-slate-700">성명:</span> {ceoName}</li>
+              <li><span class="font-medium text-slate-700">직책:</span> 대표 공인중개사</li>
+              <li><span class="font-medium text-slate-700">연락처:</span> {contact}</li>
+              <li><span class="font-medium text-slate-700">주소:</span> {address}</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 10조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제10조 (개인정보 처리방침 변경)</h2>
+          <p>이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 홈페이지를 통하여 고지할 것입니다.</p>
+          <p class="mt-2 font-medium text-slate-800">시행일: {effectiveDate}</p>
+        </section>
+
+        <!-- 권리구제 -->
+        <section class="bg-blue-50 rounded-2xl p-6 border border-blue-100">
+          <h2 class="text-xl font-bold text-slate-900 mb-3">개인정보 침해 관련 권리구제</h2>
+          <p class="text-slate-600 text-sm mb-3">개인정보 침해로 인한 신고나 상담은 아래 기관에 문의하실 수 있습니다.</p>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li>• 개인정보 침해신고센터: <span class="font-medium">privacy.kisa.or.kr / 국번없이 118</span></li>
+            <li>• 개인정보 분쟁조정위원회: <span class="font-medium">www.kopico.go.kr / 1833-6972</span></li>
+            <li>• 대검찰청 사이버범죄수사단: <span class="font-medium">www.spo.go.kr / 국번없이 1301</span></li>
+            <li>• 경찰청 사이버안전국: <span class="font-medium">cyberbureau.police.go.kr / 국번없이 182</span></li>
+          </ul>
+        </section>
+
+      </div>
+
+      <!-- 홈으로 버튼 -->
+      <div class="mt-16 text-center">
+        <a href="/" class="inline-block bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition">
+          ← 홈으로 돌아가기
+        </a>
+      </div>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-16 px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+          <div>
+            <h4 class="text-white text-xl font-bold mb-6 tracking-tight">{siteName}</h4>
+            <p class="text-sm leading-relaxed">
+              성남시 여수동 일대의 모든 부동산 거래는<br/>
+              정직과 실력을 겸비한 센트럴공인중개사와 상의하세요.
+            </p>
+          </div>
+          <div class="text-sm">
+            <p class="mb-2"><span class="text-slate-300">대표자:</span> {ceoName}</p>
+            <p class="mb-2"><span class="text-slate-300">대표번호:</span> {contact}</p>
+            <p><span class="text-slate-300">사무실 주소:</span> {address}</p>
+          </div>
+        </div>
+        <div class="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-xs">
+          <p>© 2026 {siteName}. All rights reserved.</p>
+          <div class="flex gap-4 mt-4 md:mt-0 uppercase font-semibold">
+            <a href="/privacy" class="hover:text-white transition">Privacy Policy</a>
+            <a href="#" class="hover:text-white transition">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </Container>
+</Layout>
