@@ -11,70 +11,74 @@ const contact = "031-721-0082";
 const address = "경기도 성남시 중원구 여수울로15번길 4-4, 107호(여수동)";
 const regNo = "41133-2020-00049";
 ---
-
+<!-- 1. goToNaverLand 함수: is:inline으로 전역 등록 -->
 <script is:inline>
-	function goToNaverLand() {
-		// 1. 접속 기기 확인
-		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-		
-		let targetUrl = ""; 
-
-		if (isMobile) {
-			// 모바일용 주소로 이동
-			targetUrl = "https://fin.land.naver.com/realtor/tpsxmfjfrhddls?complexNumber=102283&articleTradeTypes=A1";
-		} else {
-			// PC용 주소로 이동 (이미 PC 주소라면 생략 가능)
-			targetUrl = "https://new.land.naver.com?realtorId=tpsxmfjfrhddls";
-		}
-
-		if (targetUrl) {
-			window.location.href = targetUrl;
-		}
-	}
-</script>
-
-<!-- 네이버 지도 API 로드 (알려주신 Client ID: a1xlu0xrrm 적용) -->
-<script type="text/javascript" src="https://naver.com"></script>
-
-<script>
-    function initMap() {
-        // 서버에서 받아오는 주소 변수 (예: "서울 강남구 테헤란로 123")
-        const address = "{address}"; 
-
-        // 주소를 좌표로 변환
-        naver.maps.Service.geocode({
-            query: address
-        }, function(status, response) {
-            if (status !== naver.maps.Service.Status.OK) {
-                return console.error('주소를 찾을 수 없습니다. 주소가 정확한지 확인하세요.');
-            }
-
-            const result = response.v2.addresses[0]; // 검색 결과의 첫 번째 항목 사용
-            const coord = new naver.maps.LatLng(result.y, result.x);
-
-            // 지도 초기화
-            const map = new naver.maps.Map('map', {
-                center: coord,
-                zoom: 17, // 적당한 확대 레벨
-                zoomControl: true,
-                zoomControlOptions: {
-                    position: naver.maps.Position.TOP_RIGHT
-                }
-            });
-
-            // 매물 위치에 마커(핀) 꽂기
-            new naver.maps.Marker({
-                position: coord,
-                map: map,
-                animation: naver.maps.Animation.DROP
-            });
-        });
+  function goToNaverLand() {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const targetUrl = isMobile
+      ? "https://fin.land.naver.com/realtor/tpsxmfjfrhddls?complexNumber=102283&articleTradeTypes=A1"
+      : "https://new.land.naver.com?realtorId=tpsxmfjfrhddls";
+    if (targetUrl) window.location.href = targetUrl;
+  }
+</script> 
+<!--
+  2. 네이버 지도 API 로드
+     - ncpClientId: 발급받은 Client ID
+     - submodules=geocoder: 주소→좌표 변환 모듈 (필수!)
+-->
+<script
+  is:inline
+  type="text/javascript"
+  src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=a1xlu0xrrm"
+></script> 
+<!--
+  3. 지도 초기화 스크립트
+     - define:vars로 Astro 서버 변수 address를 클라이언트에 주입
+     - is:inline 사용 시 define:vars가 안 되므로 일반 <script>로 작성
+-->
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", function () {
+    function waitForNaver(callback) {
+      if (typeof naver !== "undefined" && naver.maps) {
+        callback();
+      } else {
+        setTimeout(function () { waitForNaver(callback); }, 100);
+      }
     }
 
-    // 페이지 로드 완료 시 지도 실행
-    window.onload = initMap;
-</script>
+    waitForNaver(function () {
+      // 좌표 하드코딩 (Geocoder 불필요 → CORS 문제 없음)
+      var coord = new naver.maps.LatLng(37.4436, 127.1426);
 
+      var map = new naver.maps.Map("map", {
+        center: coord,
+        zoom: 17,
+        zoomControl: true,
+        zoomControlOptions: {
+          position: naver.maps.Position.TOP_RIGHT,
+        },
+      });
+
+      new naver.maps.Marker({
+        position: coord,
+        map: map,
+        animation: naver.maps.Animation.DROP,
+      });
+
+      // 길찾기 버튼 활성화
+      var btn = document.getElementById("map-directions-btn");
+      if (btn) {
+        btn.style.display = "inline-flex";
+        btn.addEventListener("click", function () {
+          window.open(
+            "https://map.naver.com/p/directions/-/127.1426,37.4436,%EC%84%BC%ED%8A%B8%EB%9F%B4%EA%B3%B5%EC%9D%B8%EC%A4%91%EA%B0%9C%EC%82%AC,,/car?c=15,0,0,0,dh",
+            "_blank"
+          );
+        });
+      }
+    });
+  });
+</script>
 <Layout title="여수동 센트럴공인중개사 사무소">
   <Container>
 	<header class="flex flex-col lg:flex-row justify-between items-center my-5">
