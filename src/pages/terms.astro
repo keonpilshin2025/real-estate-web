@@ -1,0 +1,188 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+
+const siteName = "센트럴공인중개사 사무소";
+const ceoName = "박은미";
+const contact = "031-721-0082";
+const address = "경기도 성남시 중원구 여수울로15번길 4-4, 107호(여수동)";
+const effectiveDate = "2026년 1월 1일";
+---
+
+<Layout title={`이용약관 | ${siteName}`}>
+  <Container>
+    <header class="flex flex-col lg:flex-row justify-between items-center my-5">
+      <div class="flex w-full lg:w-auto items-center justify-between">
+        <a href="/" class="text-lg flex items-center">
+          <span class="font-bold text-slate-800 text-2xl">센트럴공인중개사 사무소</span>
+          <span class="ml-3 bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full font-bold">
+            성남 여수동 전문
+          </span>
+        </a>
+      </div>
+      <div class="hidden lg:flex items-center gap-6">
+        <div class="flex flex-col items-end">
+          <span class="text-[10px] text-slate-400 uppercase tracking-widest">Consulting</span>
+          <a href={`tel:${contact}`} class="text-xl font-bold text-slate-800 hover:text-blue-600 transition">
+            {contact}
+          </a>
+        </div>
+        <a href="/#contact" class="bg-slate-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-slate-800 transition">
+          방문 예약하기
+        </a>
+      </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-6 py-16">
+      <!-- 상단 타이틀 -->
+      <div class="mb-12 pb-8 border-b border-slate-200">
+        <p class="text-sm text-blue-600 font-bold uppercase tracking-widest mb-3">Legal</p>
+        <h1 class="text-4xl font-extrabold text-slate-900 mb-4">이용약관</h1>
+        <p class="text-slate-500">시행일: {effectiveDate}</p>
+      </div>
+
+      <div class="space-y-10 text-slate-700 leading-relaxed">
+
+        <!-- 1조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제1조 (목적)</h2>
+          <p>본 약관은 {siteName}(이하 "사무소")이 운영하는 홈페이지(이하 "사이트")에서 제공하는 서비스의 이용조건 및 절차, 사무소와 이용자의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
+        </section>
+
+        <!-- 2조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제2조 (용어의 정의)</h2>
+          <p>본 약관에서 사용하는 용어의 정의는 다음과 같습니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-2 text-slate-600">
+            <li>"사이트"란 사무소가 운영하는 부동산 정보 제공 홈페이지를 의미합니다.</li>
+            <li>"이용자"란 사이트에 접속하여 본 약관에 따라 사무소가 제공하는 서비스를 이용하는 자를 의미합니다.</li>
+            <li>"서비스"란 사무소가 사이트를 통해 제공하는 부동산 정보, 상담 예약, 매물 안내 등 일체의 서비스를 의미합니다.</li>
+            <li>"콘텐츠"란 사이트에 게재된 텍스트, 이미지, 영상 등 모든 정보를 의미합니다.</li>
+          </ul>
+        </section>
+
+        <!-- 3조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제3조 (약관의 효력 및 변경)</h2>
+          <p>본 약관은 사이트에 게시함으로써 효력이 발생합니다. 사무소는 합리적인 사유가 있는 경우 관련 법령을 위반하지 않는 범위 내에서 약관을 변경할 수 있으며, 변경된 약관은 사이트를 통해 공지합니다. 변경된 약관에 동의하지 않는 이용자는 서비스 이용을 중단할 수 있습니다.</p>
+        </section>
+
+        <!-- 4조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제4조 (서비스의 제공)</h2>
+          <p>사무소는 다음과 같은 서비스를 제공합니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-2 text-slate-600">
+            <li>부동산 매매·임대 매물 정보 제공</li>
+            <li>부동산 시세 및 지역 정보 안내</li>
+            <li>방문 상담 및 예약 서비스</li>
+            <li>전화·온라인 상담 서비스</li>
+            <li>기타 부동산 관련 정보 제공</li>
+          </ul>
+          <p class="mt-3">사무소는 서비스의 내용을 변경하거나 중단할 수 있으며, 이 경우 사전에 공지합니다. 단, 불가피한 사유가 있는 경우 사후 공지할 수 있습니다.</p>
+        </section>
+
+        <!-- 5조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제5조 (서비스 이용 시간)</h2>
+          <p>사이트는 연중무휴 24시간 이용 가능함을 원칙으로 합니다. 단, 시스템 정기점검, 증설 및 교체, 긴급 장애 복구 등 기술상의 이유로 서비스가 일시 중단될 수 있습니다. 실제 대면 상담은 아래 운영시간 내에 가능합니다.</p>
+          <div class="mt-4 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+            <ul class="space-y-2 text-slate-600 text-sm">
+              <li><span class="font-medium text-slate-700">평일:</span> 09:30 - 19:00</li>
+              <li><span class="font-medium text-slate-700">토요일:</span> 사전 예약제 운영</li>
+              <li><span class="font-medium text-slate-700">일요일 및 공휴일:</span> 휴무</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 6조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제6조 (이용자의 의무)</h2>
+          <p>이용자는 다음 행위를 하여서는 안 됩니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-2 text-slate-600">
+            <li>허위 정보를 입력하거나 타인의 정보를 도용하는 행위</li>
+            <li>사무소의 지식재산권 및 제3자의 권리를 침해하는 행위</li>
+            <li>사이트의 정상적인 운영을 방해하는 행위</li>
+            <li>본 약관 및 관련 법령을 위반하는 행위</li>
+            <li>사무소의 사전 동의 없이 사이트의 콘텐츠를 무단으로 복제, 배포하는 행위</li>
+            <li>기타 공서양속에 반하는 행위</li>
+          </ul>
+        </section>
+
+        <!-- 7조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제7조 (저작권 및 지식재산권)</h2>
+          <p>사이트에 게재된 모든 콘텐츠(텍스트, 이미지, 디자인 등)의 저작권은 사무소에 귀속됩니다. 이용자는 사무소의 사전 서면 동의 없이 이를 복제, 전송, 출판, 배포, 방송 등의 방법으로 이용하거나 제3자에게 이용하게 하여서는 안 됩니다.</p>
+        </section>
+
+        <!-- 8조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제8조 (면책조항)</h2>
+          <p>사무소는 다음의 경우 서비스 제공에 관한 책임이 면제됩니다.</p>
+          <ul class="list-disc list-inside mt-3 space-y-2 text-slate-600">
+            <li>천재지변 또는 이에 준하는 불가항력으로 인해 서비스를 제공할 수 없는 경우</li>
+            <li>이용자의 귀책사유로 인한 서비스 이용 장애</li>
+            <li>제3자가 제공하는 정보, 자료, 사실의 신뢰도 및 정확성</li>
+            <li>이용자 간 또는 이용자와 제3자 간의 분쟁</li>
+          </ul>
+          <p class="mt-3">사이트에 게재된 매물 정보는 참고용으로 제공되며, 실제 거래 조건은 개별 상담을 통해 확인하시기 바랍니다.</p>
+        </section>
+
+        <!-- 9조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제9조 (분쟁 해결)</h2>
+          <p>본 약관과 관련하여 사무소와 이용자 간에 분쟁이 발생한 경우, 양 당사자는 원만한 해결을 위해 성실히 협의합니다. 협의가 이루어지지 않을 경우, 관련 법령에 따라 관할 법원에 소를 제기할 수 있습니다. 본 약관에 관한 준거법은 대한민국 법령으로 합니다.</p>
+        </section>
+
+        <!-- 10조 -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-3">제10조 (연락처)</h2>
+          <p>서비스 이용과 관련한 문의사항은 아래로 연락해 주시기 바랍니다.</p>
+          <div class="mt-4 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+            <ul class="space-y-2 text-slate-600 text-sm">
+              <li><span class="font-medium text-slate-700">상호:</span> {siteName}</li>
+              <li><span class="font-medium text-slate-700">대표자:</span> {ceoName}</li>
+              <li><span class="font-medium text-slate-700">주소:</span> {address}</li>
+              <li><span class="font-medium text-slate-700">전화:</span> {contact}</li>
+            </ul>
+          </div>
+        </section>
+
+        <p class="text-sm text-slate-400 pt-4 border-t border-slate-200">본 약관은 {effectiveDate}부터 시행됩니다.</p>
+
+      </div>
+
+      <!-- 홈으로 버튼 -->
+      <div class="mt-16 text-center">
+        <a href="/" class="inline-block bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition">
+          ← 홈으로 돌아가기
+        </a>
+      </div>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-16 px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+          <div>
+            <h4 class="text-white text-xl font-bold mb-6 tracking-tight">{siteName}</h4>
+            <p class="text-sm leading-relaxed">
+              성남시 여수동 일대의 모든 부동산 거래는<br/>
+              정직과 실력을 겸비한 센트럴공인중개사와 상의하세요.
+            </p>
+          </div>
+          <div class="text-sm">
+            <p class="mb-2"><span class="text-slate-300">대표자:</span> {ceoName}</p>
+            <p class="mb-2"><span class="text-slate-300">대표번호:</span> {contact}</p>
+            <p><span class="text-slate-300">사무실 주소:</span> {address}</p>
+          </div>
+        </div>
+        <div class="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-xs">
+          <p>© 2026 {siteName}. All rights reserved.</p>
+          <div class="flex gap-4 mt-4 md:mt-0 uppercase font-semibold">
+            <a href="/privacy" class="hover:text-white transition">Privacy Policy</a>
+            <a href="/terms" class="hover:text-white transition">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </Container>
+</Layout>
