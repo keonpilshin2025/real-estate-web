@@ -4,6 +4,7 @@ import Layout from "../layouts/Layout.astro";
 //import Hero from "../components/hero.astro";
 //import Footer from "../components/footer.astro";
 import Container from "../components/container.astro";
+import officeImg from "../images/centralmainimg.jpg";
 
 const siteName = "센트럴공인중개사 사무소";
 const ceoName = "박은미";
@@ -148,9 +149,12 @@ const regNo = "41133-2020-00049";
 		<!-- 사장님 프로필 섹션 -->
 		<section class="max-w-6xl mx-auto px-6 py-20 border-b border-slate-200">
 			<div class="flex flex-col md:flex-row items-center gap-12">
-				<div class="w-64 h-80 bg-slate-200 rounded-2xl overflow-hidden shadow-inner shrink-0">
-					<!-- 실제 사장님 사진 파일이 있다면 src를 수정하세요 -->
-					<div class="w-full h-full flex items-center justify-center text-slate-400 bg-slate-200">사진 준비중</div>
+				<div class="w-64 h-80 rounded-2xl overflow-hidden shadow-lg shrink-0">
+					<img 
+						src={officeImg.src} 
+						alt="센트럴공인중개사 사무소 외관" 
+						class="w-full h-full object-cover"
+					/>
 				</div>
 				<div>
 					<h3 class="text-3xl font-bold mb-4">대표 공인중개사    <span class="text-blue-600">{ceoName}</span></h3>
