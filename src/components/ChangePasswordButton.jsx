@@ -49,8 +49,14 @@ export default function ChangePasswordButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100] p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-semibold text-slate-800">비밀번호 변경</h3>
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">닫기 ✕</button>
@@ -90,13 +96,22 @@ export default function ChangePasswordButton() {
                   required
                 />
                 {error && <p className="text-red-500">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-violet-400 text-white rounded-full h-9 font-medium hover:bg-violet-500 disabled:opacity-50 mt-1"
-                >
-                  {saving ? "변경 중..." : "변경하기"}
-                </button>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="flex-1 border border-slate-200 rounded-full h-9 text-xs hover:bg-slate-50"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 bg-violet-400 text-white rounded-full h-9 font-medium hover:bg-violet-500 disabled:opacity-50"
+                  >
+                    {saving ? "변경 중..." : "변경하기"}
+                  </button>
+                </div>
               </form>
             )}
           </div>
