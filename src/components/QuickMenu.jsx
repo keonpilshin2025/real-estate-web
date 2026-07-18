@@ -39,7 +39,7 @@ const items = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 018 0v4" />
       </svg>
     ),
-    label: "급매물",
+    label: "우선매물",
     bg: "bg-orange-50",
     color: "text-orange-500",
     href: "#hidden-listing",

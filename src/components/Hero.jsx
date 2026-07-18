@@ -20,13 +20,24 @@ export default function Hero({ contact = "031-721-0082" }) {
           href="#inquiry"
           className="bg-violet-400 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-violet-500 transition shadow-sm"
         >
-          비공개 급매물 확인
+          우선 매물 안내받기
         </a>
         <a
           href={`tel:${contact}`}
           className="bg-white text-slate-900 text-sm font-medium px-6 py-3 rounded-full border border-slate-200 hover:bg-slate-50 transition"
         >
           전화 상담
+        </a>
+      </div>
+
+      <div className="mt-6">
+        <a
+          href="javascript:void(0);"
+          onClick={() => window.goToNaverLand && window.goToNaverLand()}
+          className="inline-flex items-center gap-2 text-sm font-medium text-[#03C75A] hover:underline cursor-pointer"
+        >
+          <span className="bg-[#03C75A] text-white text-xs font-bold w-5 h-5 rounded flex items-center justify-center">N</span>
+          네이버 실시간 매물보기
         </a>
       </div>
     </section>
