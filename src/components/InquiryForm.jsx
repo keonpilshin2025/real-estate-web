@@ -9,7 +9,7 @@ export default function InquiryForm() {
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("idle"); // idle | success | error
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     if (!phone.trim()) {
@@ -17,13 +17,23 @@ export default function InquiryForm() {
       return;
     }
 
-    // TODO: 실제 저장 로직 연결 (구글시트 API, 이메일 발송 등)
-    console.log({ complex, budget, phone });
+    try {
+      const res = await fetch("/api/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ complex, budget, phone }),
+      });
 
-    setStatus("success");
-    setComplex("");
-    setBudget("");
-    setPhone("");
+      if (!res.ok) throw new Error("전송 실패");
+
+      setStatus("success");
+      setComplex("");
+      setBudget("");
+      setPhone("");
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+    }
   }
 
   return (
