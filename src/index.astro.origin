@@ -1,14 +1,10 @@
 ---
 // 1. Astroship의 기본 레이아웃과 컴포넌트를 불러옵니다.
 import Layout from "../layouts/Layout.astro";
+//import Hero from "../components/hero.astro";
+//import Footer from "../components/footer.astro";
 import Container from "../components/container.astro";
 import officeImg from "../images/centralmainimg.jpg";
-
-// 신규 React 컴포넌트
-import Hero from "../components/Hero.jsx";
-import QuickMenu from "../components/QuickMenu.jsx";
-import InquiryForm from "../components/InquiryForm.jsx";
-import ReviewCard from "../components/ReviewCard.jsx";
 
 const siteName = "센트럴공인중개사 사무소";
 const ceoName = "박은미";
@@ -25,7 +21,7 @@ const regNo = "41133-2020-00049";
       : "https://new.land.naver.com?realtorId=tpsxmfjfrhddls";
     if (targetUrl) window.location.href = targetUrl;
   }
-</script>
+</script> 
 <!--
   2. 네이버 지도 API 로드
      - ncpClientId: 발급받은 Client ID
@@ -35,7 +31,7 @@ const regNo = "41133-2020-00049";
   is:inline
   type="text/javascript"
   src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=7zkmud7ekw"
-></script>
+></script> 
 <!--
   3. 지도 초기화 스크립트
      - define:vars로 Astro 서버 변수 address를 클라이언트에 주입
@@ -102,39 +98,55 @@ const regNo = "41133-2020-00049";
 			</a>
 			</div>
 			<!-- 강조된 버튼 -->
-			<a href="#contact" class="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition">
+			<a href="#contact" class="bg-slate-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-slate-800 transition">
 			방문 예약하기
 			</a>
 		</div>
 		</header>
-
+<!--		
+    <head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>{siteName} - 성남 여수동 부동산 전문가</title>
+		
+		<-- [핵심] 모든 설정을 무시하고 Tailwind 디자인을 강제로 불러오는 링크입니다 >
+		<link href="https://cdn.jsdelivr.net" rel="stylesheet">
+		
+		<-- 폰트 설정 (선택사항) >
+		<link href="https://fonts.googleapis.com" rel="stylesheet">
+		<style>
+			body { font-family: 'Noto Sans KR', sans-serif; }
+		</style>
+	</head>
+-->
     <main class="mt-16">
-      <!-- 히어로: 새 디자인 (그라디언트 + 급매물/전화 CTA) -->
-      <Hero contact={contact} client:load />
-
-      <!-- 네이버 실시간 매물보기 (기존 기능 유지) -->
-      <div class="text-center -mt-4 mb-2">
-        <a
-          href="javascript:void(0);"
-          onclick="goToNaverLand()"
-          class="inline-flex items-center gap-2 text-sm font-medium text-[#03C75A] hover:underline cursor-pointer"
-        >
-          <span class="bg-[#03C75A] text-white text-xs font-bold w-5 h-5 rounded flex items-center justify-center">N</span>
-          네이버 실시간 매물보기
-        </a>
-      </div>
-
-      <!-- 퀵메뉴: 단지비교 · 학군정보 · 개발호재 · 급매물 -->
-      <QuickMenu client:load />
-
-      <!-- 희망 조건 매물 신청 폼 -->
-      <div class="px-1 pb-4">
-        <InquiryForm client:load />
-      </div>
+      <!-- 히어로: 신뢰감 있는 첫인상 -->
+		<section class="relative bg-slate-900 text-white py-24 px-6 overflow-hidden">
+			<div class="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com')] bg-cover bg-center"></div>
+			<div class="relative z-10 max-w-4xl mx-auto text-center">
+				<span class="inline-block bg-blue-600 text-xs font-bold px-3 py-1 rounded-full mb-6 uppercase tracking-wider">성남 여수동 전문</span>
+				<h2 class="text-2xl md:text-5xl font-extrabold mb-6 leading-tight">정직한 중개, 확실한 분석<br/>센트럴이 함께합니다</h2>
+				<p class="text-lg md:text-xl text-slate-300 mb-10 font-light">여수동 아파트·상가·오피스텔 매물 보유 및 맞춤형 컨설팅</p>
+				<div class="flex flex-col sm:flex-row justify-center gap-4">
+<!--					<a href="https://new.land.naver.com?realtorId=tpsxmfjfrhddls" target="_blank" class="bg-[#03C75A] text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-lg transition">N 네이버 실시간 매물보기</a> -->
+					<!-- href는 빈 링크(#)나 javascript:void(0)로 두고, onclick에 함수를 연결합니다 -->
+					<a 
+					href="javascript:void(0);" 
+					onclick="goToNaverLand()" 
+					class="inline-block bg-[#03C75A] text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-lg transition cursor-pointer"
+					>
+					<span class="mr-2">N</span> 네이버 실시간 매물보기
+					</a>
+					<a href={`tel:${contact}`} class="bg-white text-slate-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-100 transition">전화 상담하기</a>
+				</div>
+			</div>
+		</section>
 
 		<!-- 사장님 프로필 섹션 -->
 		<section class="max-w-6xl mx-auto px-6 py-20 border-b border-slate-200">
+			<!-- 수정: items-start로 변경해서 이미지 크기에 맞게 정렬 -->
 			<div class="flex flex-col md:flex-row items-start gap-12">
+				<!-- 수정: 와이드 비율로 변경, 섹션 전체 레이아웃도 조정 -->
 				<div class="w-full md:w-[500px] h-64 md:h-72 rounded-2xl overflow-hidden shadow-lg shrink-0">
 					<img 
 						src={officeImg.src} 
@@ -154,11 +166,6 @@ const regNo = "41133-2020-00049";
 						<li class="flex items-center gap-2">✅ 상가 임대차 전문 컨설팅</li>
 						<li class="flex items-center gap-2">✅ 신속하고 정확한 법률 검토</li>
 					</ul>
-
-					<!-- 계약 성공 후기 미리보기 -->
-					<div class="mt-6">
-						<ReviewCard client:load />
-					</div>
 				</div>
 			</div>
 		</section>
@@ -197,7 +204,9 @@ const regNo = "41133-2020-00049";
 				<a href="https://naver.me/G0p8taK9" target="_blank" class="text-blue-600 font-bold hover:underline">네이버 지도로 보기 &rarr;</a>
 			</div>
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+				<!-- 수정된 지도 영역 -->
 				<div id="map" class="bg-slate-200 h-96 rounded-3xl overflow-hidden relative shadow-inner">
+					<!-- API 로딩 전 노출될 배경 -->
 					<div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
 						지도를 불러오는 중...
 					</div>

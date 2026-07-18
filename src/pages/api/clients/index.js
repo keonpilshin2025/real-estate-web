@@ -1,0 +1,48 @@
+import { env } from "cloudflare:workers";
+import { getDb } from "../../../lib/db.js";
+
+export const prerender = false;
+
+// GET /api/clients?q=검색어
+export async function GET({ request }) {
+  const sql = getDb(env.DATABASE_URL);
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q") || "";
+
+  const rows = await sql`
+    SELECT * FROM clients
+    WHERE (${q} = '' OR name ILIKE ${'%' + q + '%'} OR phone ILIKE ${'%' + q + '%'})
+    ORDER BY created_at DESC
+    LIMIT 20
+  `;
+
+  return new Response(JSON.stringify(rows), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// POST /api/clients
+export async function POST({ request }) {
+  const sql = getDb(env.DATABASE_URL);
+  const body = await request.json();
+  const { name, phone, description, address, memo } = body;
+
+  if (!name) {
+    return new Response(JSON.stringify({ error: "이름은 필수입니다." }), { status: 400 });
+  }
+  if (!/^[가-힣]+$/.test(name)) {
+    return new Response(JSON.stringify({ error: "이름은 한글만 입력 가능합니다." }), { status: 400 });
+  }
+
+  const [row] = await sql`
+    INSERT INTO clients (name, phone, description, address, memo)
+    VALUES (${name}, ${phone || null}, ${description || null}, ${address || null}, ${memo || null})
+    RETURNING *
+  `;
+
+  return new Response(JSON.stringify(row), {
+    status: 201,
+    headers: { "Content-Type": "application/json" },
+  });
+}

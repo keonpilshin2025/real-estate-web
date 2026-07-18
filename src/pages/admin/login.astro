@@ -1,0 +1,98 @@
+---
+import "../../styles/global.css";
+export const prerender = false;
+---
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>관리자 로그인 | 센트럴공인중개사</title>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-violet-50 to-orange-50 px-4">
+  <div class="w-full max-w-sm">
+
+    <div class="flex flex-col items-center mb-6">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-violet-500 text-white flex items-center justify-center font-bold text-lg shadow-md mb-3">
+        센
+      </div>
+      <h1 class="text-base font-semibold text-slate-800">센트럴공인중개사 관리자 로그인</h1>
+      <p class="text-xs text-slate-400 mt-1">여수동 센트럴공인중개사 사무소</p>
+    </div>
+
+    <div class="bg-white/90 backdrop-blur border border-white rounded-2xl p-8 shadow-lg">
+      <div class="flex flex-col gap-3">
+        <input
+          type="text"
+          id="username"
+          placeholder="아이디"
+          class="border border-slate-200 rounded-full h-11 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
+        />
+        <input
+          type="password"
+          id="password"
+          placeholder="비밀번호"
+          class="border border-slate-200 rounded-full h-11 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
+        />
+
+        <label class="flex items-center gap-2 text-xs text-slate-500 px-1 select-none cursor-pointer">
+          <input type="checkbox" id="remember" class="w-3.5 h-3.5 accent-violet-400" />
+          아이디 저장
+        </label>
+
+        <button
+          type="button"
+          id="login-btn"
+          class="bg-violet-400 text-white rounded-full h-11 text-sm font-medium hover:bg-violet-500 transition mt-1"
+        >
+          로그인
+        </button>
+        <p id="error-msg" class="text-xs text-red-500 text-center hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    const usernameInput = document.getElementById("username");
+    const rememberCheckbox = document.getElementById("remember");
+
+    // 저장된 아이디 있으면 불러오기
+    const savedUsername = localStorage.getItem("admin_remember_username");
+    if (savedUsername) {
+      usernameInput.value = savedUsername;
+      rememberCheckbox.checked = true;
+      document.getElementById("password").focus();
+    }
+
+    async function doLogin() {
+      const errorMsg = document.getElementById("error-msg");
+      errorMsg.classList.add("hidden");
+
+      const username = usernameInput.value;
+      const password = document.getElementById("password").value;
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (res.ok) {
+        if (rememberCheckbox.checked) {
+          localStorage.setItem("admin_remember_username", username);
+        } else {
+          localStorage.removeItem("admin_remember_username");
+        }
+        window.location.href = "/admin";
+      } else {
+        const data = await res.json();
+        errorMsg.textContent = data.error || "로그인에 실패했습니다.";
+        errorMsg.classList.remove("hidden");
+      }
+    }
+
+    document.getElementById("login-btn").onclick = doLogin;
+    usernameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("password").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  </script>
+</body>
+</html>
