@@ -6,7 +6,7 @@ import ContractsListPanel from "./ContractsListPanel.jsx";
 
 const TABS = [
   { key: "overview", label: "목록" },
-  { key: "properties", label: "물건" },
+  { key: "properties", label: "매물" },
   { key: "clients", label: "고객" },
   { key: "contracts", label: "계약" },
 ];

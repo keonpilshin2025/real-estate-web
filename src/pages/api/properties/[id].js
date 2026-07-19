@@ -9,7 +9,7 @@ export async function GET({ params }) {
   const [row] = await sql`SELECT * FROM properties WHERE id = ${id}`;
 
   if (!row) {
-    return new Response(JSON.stringify({ error: "해당 물건을 찾을 수 없습니다." }), { status: 404 });
+    return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
   return new Response(JSON.stringify(row), {
     status: 200,
@@ -25,7 +25,10 @@ export async function PUT({ request, params }) {
   const {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
+    transaction_type, asking_price, asking_deposit, asking_monthly_rent,
   } = body;
+
+  const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
 
   const [row] = await sql`
     UPDATE properties SET
@@ -38,13 +41,17 @@ export async function PUT({ request, params }) {
       usage_type = ${usage_type || null},
       features = ${features || null},
       memo = ${memo || null},
+      transaction_type = ${transaction_type || null},
+      asking_price = ${toInt(asking_price)},
+      asking_deposit = ${toInt(asking_deposit)},
+      asking_monthly_rent = ${toInt(asking_monthly_rent)},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *
   `;
 
   if (!row) {
-    return new Response(JSON.stringify({ error: "해당 물건을 찾을 수 없습니다." }), { status: 404 });
+    return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
 
   return new Response(JSON.stringify(row), {

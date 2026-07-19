@@ -2,6 +2,40 @@ import { useEffect, useState } from "react";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
 const PROPERTY_TYPES = ["아파트", "빌라", "상가"];
+const TRANSACTION_TYPES = ["매매", "전세", "월세"];
+const EOK = 100000000;
+const MAN = 10000;
+
+function formatEokMan(n) {
+  if (!n) return "-";
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+
+function EokManInput({ value, onChange }) {
+  const raw = Number(value || 0);
+  const eok = raw ? Math.floor(raw / EOK) : "";
+  const man = raw ? Math.floor((raw % EOK) / MAN) : "";
+  function update(eokVal, manVal) {
+    const total = (parseInt(eokVal, 10) || 0) * EOK + (parseInt(manVal, 10) || 0) * MAN;
+    onChange(total ? String(total) : "");
+  }
+  return (
+    <div className="col-span-2 flex items-center gap-1">
+      <input type="number" min="0" step="1" value={eok} onChange={(e) => update(e.target.value, man)}
+        className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
+      <span className="text-slate-400 shrink-0">억</span>
+      <input type="number" min="0" step="1" value={man} onChange={(e) => update(eok, e.target.value)}
+        className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
+      <span className="text-slate-400 shrink-0">만원</span>
+    </div>
+  );
+}
 
 const emptyForm = {
   property_name: "",
@@ -13,6 +47,10 @@ const emptyForm = {
   usage_type: "",
   features: "",
   memo: "",
+  transaction_type: "",
+  asking_price: "",
+  asking_deposit: "",
+  asking_monthly_rent: "",
 };
 
 export default function PropertiesPanel() {
@@ -52,7 +90,7 @@ export default function PropertiesPanel() {
     fetchProperties();
   }
 
-  // 물건지명 선택
+  // 매물명 선택
   function handleNameChange(value) {
     if (value === "__other__") {
       setIsOtherName(true);
@@ -125,6 +163,10 @@ export default function PropertiesPanel() {
       usage_type: p.usage_type || "",
       features: p.features || "",
       memo: p.memo || "",
+      transaction_type: p.transaction_type || "",
+      asking_price: p.asking_price || "",
+      asking_deposit: p.asking_deposit || "",
+      asking_monthly_rent: p.asking_monthly_rent || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
     setEditingId(p.id);
@@ -144,13 +186,13 @@ export default function PropertiesPanel() {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="물건지명/주소 검색"
+          placeholder="매물명/주소 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1"
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
         <div className="flex-1" />
         <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800">
-          + 물건 등록
+          + 매물 등록
         </button>
       </form>
 
@@ -159,17 +201,19 @@ export default function PropertiesPanel() {
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">구분</th>
-              <th className="px-4 py-3 font-medium">물건지명</th>
+              <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동</th>
               <th className="px-4 py-3 font-medium">호수</th>
               <th className="px-4 py-3 font-medium">평형</th>
+              <th className="px-4 py-3 font-medium">거래유형</th>
+              <th className="px-4 py-3 font-medium">희망가</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && properties.length === 0 && <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-400">등록된 물건이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && properties.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
             {properties.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{p.property_type}</td>
@@ -177,6 +221,12 @@ export default function PropertiesPanel() {
                 <td className="px-4 py-3 text-slate-600">{p.dong || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.ho || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.unit_type || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{p.transaction_type || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {p.transaction_type === "월세"
+                    ? `${formatEokMan(p.asking_deposit)} / ${formatEokMan(p.asking_monthly_rent)}`
+                    : formatEokMan(p.asking_price)}
+                </td>
                 <td className="px-4 py-3 text-slate-600">{p.address || "-"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openEditForm(p)} className="text-violet-400 hover:text-violet-600 text-xs mr-3">수정</button>
@@ -191,7 +241,7 @@ export default function PropertiesPanel() {
       {showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingId ? "물건 정보 수정" : "물건 등록"}</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingId ? "매물 정보 수정" : "매물 등록"}</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2 text-xs">
 
               <select
@@ -199,14 +249,14 @@ export default function PropertiesPanel() {
                 onChange={(e) => handleNameChange(e.target.value)}
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               >
-                <option value="">물건지명 선택 *</option>
+                <option value="">매물명 선택 *</option>
                 {KNOWN_COMPLEXES.map((c) => <option key={c} value={c}>{c}</option>)}
                 <option value="__other__">기타 (직접입력)</option>
               </select>
 
               {isOtherName && (
                 <input
-                  placeholder="물건지명 직접입력 (단지명/상가명/빌라명) *"
+                  placeholder="매물명 직접입력 (단지명/상가명/빌라명) *"
                   required
                   value={form.property_name}
                   onChange={(e) => setForm({ ...form, property_name: e.target.value })}
@@ -220,7 +270,7 @@ export default function PropertiesPanel() {
                 onChange={(e) => setForm({ ...form, property_type: e.target.value, usage_type: e.target.value === "상가" ? form.usage_type : "" })}
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               >
-                <option value="">물건구분 선택 *</option>
+                <option value="">매물구분 선택 *</option>
                 {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
 
@@ -233,6 +283,34 @@ export default function PropertiesPanel() {
                   form.property_type === "상가" ? "bg-white text-slate-800" : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
               />
+
+              <label className="text-slate-400 col-span-2 -mb-1">거래유형 / 희망가</label>
+              <select
+                value={form.transaction_type}
+                onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              >
+                <option value="">거래유형 선택</option>
+                {TRANSACTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+
+              {(form.transaction_type === "매매" || form.transaction_type === "전세") && (
+                <>
+                  <span className="col-span-2 text-slate-400 -mb-1">
+                    {form.transaction_type === "매매" ? "희망 매매대금" : "희망 전세보증금"}
+                  </span>
+                  <EokManInput value={form.asking_price} onChange={(v) => setForm({ ...form, asking_price: v })} />
+                </>
+              )}
+
+              {form.transaction_type === "월세" && (
+                <>
+                  <span className="col-span-2 text-slate-400 -mb-1">희망 월세보증금</span>
+                  <EokManInput value={form.asking_deposit} onChange={(v) => setForm({ ...form, asking_deposit: v })} />
+                  <span className="col-span-2 text-slate-400 -mb-1">희망 월세</span>
+                  <EokManInput value={form.asking_monthly_rent} onChange={(v) => setForm({ ...form, asking_monthly_rent: v })} />
+                </>
+              )}
 
               {/* 동 */}
               {isKnown ? (
@@ -306,7 +384,7 @@ export default function PropertiesPanel() {
               <label className="text-slate-400 col-span-2 -mb-1">특장점 (최대 500자)</label>
               <textarea
                 maxLength={500}
-                placeholder="이 물건만의 장점을 적어주세요"
+                placeholder="이 매물만의 장점을 적어주세요"
                 value={form.features}
                 onChange={(e) => setForm({ ...form, features: e.target.value })}
                 className="col-span-2 border border-slate-200 rounded-lg p-3 h-20"

@@ -33,18 +33,23 @@ export async function POST({ request }) {
   const {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
+    transaction_type, asking_price, asking_deposit, asking_monthly_rent,
   } = body;
 
   if (!property_name || !property_type) {
-    return new Response(JSON.stringify({ error: "물건지명과 물건구분은 필수입니다." }), { status: 400 });
+    return new Response(JSON.stringify({ error: "매물지명과 매물구분은 필수입니다." }), { status: 400 });
   }
+
+  const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
 
   const [row] = await sql`
     INSERT INTO properties
-      (property_name, property_type, dong, ho, address, unit_type, usage_type, features, memo)
+      (property_name, property_type, dong, ho, address, unit_type, usage_type, features, memo,
+       transaction_type, asking_price, asking_deposit, asking_monthly_rent)
     VALUES
       (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${address || null},
-       ${unit_type || null}, ${usage_type || null}, ${features || null}, ${memo || null})
+       ${unit_type || null}, ${usage_type || null}, ${features || null}, ${memo || null},
+       ${transaction_type || null}, ${toInt(asking_price)}, ${toInt(asking_deposit)}, ${toInt(asking_monthly_rent)})
     RETURNING *
   `;
 

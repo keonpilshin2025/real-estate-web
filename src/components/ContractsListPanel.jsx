@@ -44,7 +44,7 @@ export default function ContractsListPanel() {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="물건지명/고객명 검색"
+          placeholder="매물명/고객명 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1"
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
@@ -55,7 +55,7 @@ export default function ContractsListPanel() {
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">계약유형</th>
-              <th className="px-4 py-3 font-medium">물건지명</th>
+              <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동/호수</th>
               <th className="px-4 py-3 font-medium">평형</th>
               <th className="px-4 py-3 font-medium">이름</th>

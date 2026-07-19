@@ -1,5 +1,40 @@
 import { useEffect, useState } from "react";
 
+const TRANSACTION_TYPES = ["매매", "전세", "월세"];
+const EOK = 100000000;
+const MAN = 10000;
+
+function formatEokMan(n) {
+  if (!n) return "-";
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+
+function EokManInput({ value, onChange }) {
+  const raw = Number(value || 0);
+  const eok = raw ? Math.floor(raw / EOK) : "";
+  const man = raw ? Math.floor((raw % EOK) / MAN) : "";
+  function update(eokVal, manVal) {
+    const total = (parseInt(eokVal, 10) || 0) * EOK + (parseInt(manVal, 10) || 0) * MAN;
+    onChange(total ? String(total) : "");
+  }
+  return (
+    <div className="flex items-center gap-1">
+      <input type="number" min="0" step="1" value={eok} onChange={(e) => update(e.target.value, man)}
+        className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
+      <span className="text-slate-400 shrink-0">억</span>
+      <input type="number" min="0" step="1" value={man} onChange={(e) => update(eok, e.target.value)}
+        className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
+      <span className="text-slate-400 shrink-0">만원</span>
+    </div>
+  );
+}
+
 export default function PropertyPopup({ propertyId, onClose, onSaved }) {
   const [data, setData] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -40,17 +75,26 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
         ) : (
           <>
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-sm font-semibold text-slate-800">물건 정보</h3>
+              <h3 className="text-sm font-semibold text-slate-800">매물 정보</h3>
               <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xs">닫기 ✕</button>
             </div>
 
             {!editing ? (
               <div className="flex flex-col gap-2 text-xs">
                 <Row label="구분" value={data.property_type} />
-                <Row label="물건지명" value={data.property_name} />
+                <Row label="매물명" value={data.property_name} />
                 <Row label="동/호수" value={[data.dong, data.ho].filter(Boolean).join(" ")} />
                 <Row label="평형" value={data.unit_type} />
                 <Row label="사용유형" value={data.usage_type} />
+                <Row label="거래유형" value={data.transaction_type} />
+                <Row
+                  label="희망가"
+                  value={
+                    data.transaction_type === "월세"
+                      ? `${formatEokMan(data.asking_deposit)} / ${formatEokMan(data.asking_monthly_rent)}`
+                      : formatEokMan(data.asking_price)
+                  }
+                />
                 <Row label="주소" value={data.address} />
                 <Row label="특장점" value={data.features} multiline />
                 <Row label="비고" value={data.memo} multiline />
@@ -63,7 +107,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
             ) : (
               <div className="flex flex-col gap-2 text-xs">
                 <input value={form.property_name || ""} onChange={(e) => setForm({ ...form, property_name: e.target.value })}
-                  placeholder="물건지명" className="border border-slate-200 rounded-lg h-9 px-3" />
+                  placeholder="매물명" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.property_type || ""} onChange={(e) => setForm({ ...form, property_type: e.target.value })}
                   placeholder="구분 (아파트/빌라/상가)" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <div className="flex gap-2">
@@ -76,6 +120,29 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                   placeholder="평형" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.usage_type || ""} onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
                   placeholder="사용유형 (상가만)" className="border border-slate-200 rounded-lg h-9 px-3" />
+
+                <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
+                  className="border border-slate-200 rounded-lg h-9 px-3">
+                  <option value="">거래유형 선택</option>
+                  {TRANSACTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+
+                {(form.transaction_type === "매매" || form.transaction_type === "전세") && (
+                  <>
+                    <span className="text-slate-400">{form.transaction_type === "매매" ? "희망 매매대금" : "희망 전세보증금"}</span>
+                    <EokManInput value={form.asking_price} onChange={(v) => setForm({ ...form, asking_price: v })} />
+                  </>
+                )}
+
+                {form.transaction_type === "월세" && (
+                  <>
+                    <span className="text-slate-400">희망 월세보증금</span>
+                    <EokManInput value={form.asking_deposit} onChange={(v) => setForm({ ...form, asking_deposit: v })} />
+                    <span className="text-slate-400">희망 월세</span>
+                    <EokManInput value={form.asking_monthly_rent} onChange={(v) => setForm({ ...form, asking_monthly_rent: v })} />
+                  </>
+                )}
+
                 <input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })}
                   placeholder="주소" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <textarea value={form.features || ""} maxLength={500} onChange={(e) => setForm({ ...form, features: e.target.value })}

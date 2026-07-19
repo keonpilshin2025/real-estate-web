@@ -95,6 +95,9 @@ export default function ContractMapping() {
   const [propHighlight, setPropHighlight] = useState(0);
   const [openContractId, setOpenContractId] = useState(null);
 
+  const [blockingRows, setBlockingRows] = useState([]);
+  const [warningRows, setWarningRows] = useState([]);
+
   async function fetchContracts() {
     setLoading(true);
     const res = await fetch("/api/contracts");
@@ -104,6 +107,29 @@ export default function ContractMapping() {
   }
 
   useEffect(() => { fetchContracts(); }, []);
+
+  // 매물 + 계약유형이 정해지면 충돌 여부 체크
+  useEffect(() => {
+    if (!form.property_id || !form.contract_type) {
+      setBlockingRows([]);
+      setWarningRows([]);
+      return;
+    }
+    const params = new URLSearchParams({
+      property_id: String(form.property_id),
+      contract_type: form.contract_type,
+    });
+    fetch(`/api/contracts/check?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setBlockingRows(Array.isArray(data?.blockingRows) ? data.blockingRows : []);
+        setWarningRows(Array.isArray(data?.warningRows) ? data.warningRows : []);
+      })
+      .catch(() => {
+        setBlockingRows([]);
+        setWarningRows([]);
+      });
+  }, [form.property_id, form.contract_type]);
 
   async function searchClients(q) {
     setClientQuery(q);
@@ -173,8 +199,20 @@ export default function ContractMapping() {
     setClientQuery(`${c.name} (${c.phone || "연락처 없음"})`);
   }
 
+  // 매물 선택 시, 그 매물에 등록된 거래유형/희망가를 계약 폼에 기본값으로 채워줌
+  // (계약 시점에 실제 협의된 금액으로 그대로 수정 가능)
   function pickProp(p) {
-    setForm({ ...form, property_id: p.id });
+    setForm((prev) => {
+      let next = {
+        ...prev,
+        property_id: p.id,
+        contract_type: p.transaction_type || prev.contract_type,
+        price: p.transaction_type !== "월세" ? (p.asking_price ? String(p.asking_price) : prev.price) : prev.price,
+        deposit: p.transaction_type === "월세" ? (p.asking_deposit ? String(p.asking_deposit) : prev.deposit) : prev.deposit,
+        monthly_rent: p.transaction_type === "월세" ? (p.asking_monthly_rent ? String(p.asking_monthly_rent) : prev.monthly_rent) : prev.monthly_rent,
+      };
+      return recalcBalance(next);
+    });
     setPropResults([]);
     setPropQuery(`${p.property_name} ${p.dong || ""} ${p.ho || ""}`.trim());
   }
@@ -206,6 +244,17 @@ export default function ContractMapping() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    if (blockingRows.length > 0) return; // 방어적 체크 (버튼은 이미 비활성화되어 있음)
+
+    if (warningRows.length > 0) {
+      const names = warningRows.map((d) => `${d.contract_type}·${d.client_name}(${d.client_role})`).join(", ");
+      const ok = confirm(
+        `이 매물에 이미 진행중인 다른 유형의 계약이 있습니다: ${names}\n\n그래도 등록하시겠습니까?`
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
 
     const res = await fetch("/api/contracts", {
@@ -217,10 +266,7 @@ export default function ContractMapping() {
     setSaving(false);
 
     if (res.ok) {
-      setForm(emptyForm);
-      setClientQuery("");
-      setPropQuery("");
-      setShowForm(false);
+      closeForm();
       fetchContracts();
     } else {
       const data = await res.json();
@@ -232,6 +278,15 @@ export default function ContractMapping() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     await fetch(`/api/contracts/${id}`, { method: "DELETE" });
     fetchContracts();
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setForm(emptyForm);
+    setClientQuery("");
+    setPropQuery("");
+    setBlockingRows([]);
+    setWarningRows([]);
   }
 
   return (
@@ -250,7 +305,7 @@ export default function ContractMapping() {
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">구분</th>
-              <th className="px-4 py-3 font-medium">물건지명</th>
+              <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동/호수</th>
               <th className="px-4 py-3 font-medium">고객명</th>
               <th className="px-4 py-3 font-medium">역할</th>
@@ -342,10 +397,10 @@ export default function ContractMapping() {
                 {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
 
-              <label className="text-slate-400 col-span-2 -mb-1">물건 검색 * <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span></label>
+              <label className="text-slate-400 col-span-2 -mb-1">매물 검색 * <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span></label>
               <div className="col-span-2 relative">
                 <input
-                  placeholder="물건지명으로 검색, 또는 클릭해서 목록 보기"
+                  placeholder="매물명으로 검색, 또는 클릭해서 목록 보기"
                   value={propQuery}
                   onChange={(e) => searchProps(e.target.value)}
                   onFocus={handlePropFocus}
@@ -368,6 +423,32 @@ export default function ContractMapping() {
                   </div>
                 )}
               </div>
+
+              {form.property_id && (
+                <p className="col-span-2 text-slate-400 -mt-1">
+                  매물에 등록된 거래유형/희망가가 있으면 아래 값이 자동으로 채워집니다. 실제 협의 금액으로 자유롭게 수정하세요.
+                </p>
+              )}
+
+              {blockingRows.length > 0 && (
+                <div className="col-span-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 flex gap-2 items-start">
+                  <span className="shrink-0">🚫</span>
+                  <span>
+                    이 매물은 이미 진행중인 같은 성격의 계약({blockingRows.map((d) => `${d.contract_type}·${d.client_name}(${d.client_role})`).join(", ")})이 있어
+                    등록할 수 없습니다. 기존 계약을 먼저 종료(삭제)하거나 내용을 확인해 주세요.
+                  </span>
+                </div>
+              )}
+
+              {warningRows.length > 0 && (
+                <div className="col-span-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-3 py-2 flex gap-2 items-start">
+                  <span className="shrink-0">⚠️</span>
+                  <span>
+                    이 매물에 이미 진행중인 다른 유형의 계약이 있어요:{" "}
+                    {warningRows.map((d) => `${d.contract_type}·${d.client_name}(${d.client_role})`).join(", ")}
+                  </span>
+                </div>
+              )}
 
               <select
                 required
@@ -434,9 +515,13 @@ export default function ContractMapping() {
               />
 
               <div className="col-span-2 flex justify-end gap-2 mt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
-                <button type="submit" disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
-                  {saving ? "저장 중..." : "저장"}
+                <button type="button" onClick={closeForm} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
+                <button
+                  type="submit"
+                  disabled={saving || blockingRows.length > 0}
+                  className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "저장 중..." : blockingRows.length > 0 ? "등록 불가" : "저장"}
                 </button>
               </div>
             </form>
