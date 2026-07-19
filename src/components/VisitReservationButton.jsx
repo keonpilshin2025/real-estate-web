@@ -51,9 +51,9 @@ export default function VisitReservationButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition"
+        className="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition whitespace-nowrap"
       >
-        방문 예약하기
+        방문예약
       </button>
 
       {open && (
@@ -103,19 +103,19 @@ export default function VisitReservationButton() {
                   className="bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
                 />
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
                   />
                   <select
                     value={timeSlot}
                     onChange={(e) => setTimeSlot(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-full h-10 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-full h-10 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
                   >
-                    <option value="">시간대</option>
+                    <option value="">시간대 선택</option>
                     {timeSlots.map((t) => (
                       <option key={t} value={t}>
                         {t}
