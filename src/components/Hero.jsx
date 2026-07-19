@@ -6,13 +6,13 @@ export default function Hero({ contact = "031-721-0082" }) {
       </span>
 
       <h2 className="text-2xl md:text-4xl font-medium text-slate-900 leading-snug mb-3">
-        판교 30분, 분당보다 합리적인
+        직주근접 판교,
         <br />
-        여수동 아파트를 찾으세요
+        초등학교·편의시설도 도보권
       </h2>
 
       <p className="text-sm md:text-base text-slate-500 mb-8">
-        출퇴근 시간 · 학군 · 시세를 한 곳에서 비교
+        믿을 수 있는 상담, 센트럴공인중개사가 약속드립니다
       </p>
 
       <div className="flex flex-col sm:flex-row justify-center gap-3">

@@ -5,7 +5,7 @@ import { env } from "cloudflare:workers";
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { complex, budget, phone } = await request.json();
+    const { complex, budget, phone, memo } = await request.json();
 
     if (!phone || typeof phone !== "string") {
       return new Response(JSON.stringify({ ok: false, error: "phone required" }), {
@@ -18,10 +18,11 @@ export const POST: APIRoute = async ({ request }) => {
     const chatIds = env.TELEGRAM_CHAT_IDS.split(",").map((id) => id.trim());
 
     const text =
-      `📩 새 매물 신청\n` +
+      `📩 새 매물 상담 신청\n` +
       `단지: ${complex || "미선택"}\n` +
       `예산: ${budget || "미선택"}\n` +
-      `연락처: ${phone}`;
+      `연락처: ${phone}` +
+      (memo && String(memo).trim() ? `\n상담 내용: ${String(memo).trim()}` : "");
 
     const results = await Promise.all(
       chatIds.map((chatId) =>
