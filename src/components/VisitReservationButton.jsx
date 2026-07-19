@@ -87,55 +87,70 @@ export default function VisitReservationButton() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="이름 (선택)"
-                  className="bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                />
-
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="휴대폰 번호"
-                  className="bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                />
-
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                  />
-                  <select
-                    value={timeSlot}
-                    onChange={(e) => setTimeSlot(e.target.value)}
-                    className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-full h-10 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                  >
-                    <option value="">시간대 선택</option>
-                    {timeSlots.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="relative">
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-1 ml-1">이름 (선택)</label>
                   <input
                     type="text"
-                    value={memo}
-                    onChange={(e) => setMemo(e.target.value.slice(0, VISIT_MEMO_MAX))}
-                    maxLength={VISIT_MEMO_MAX}
-                    placeholder="남기실 말씀 (선택)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-full h-10 pl-4 pr-14 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="홍길동"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                    {memo.length}/{VISIT_MEMO_MAX}
-                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-1 ml-1">휴대폰 번호</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="010-0000-0000"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-[11px] text-slate-500 mb-1 ml-1">방문 희망일</label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-full h-10 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-[11px] text-slate-500 mb-1 ml-1">희망 시간대</label>
+                    <select
+                      value={timeSlot}
+                      onChange={(e) => setTimeSlot(e.target.value)}
+                      className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-full h-10 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    >
+                      <option value="">선택</option>
+                      {timeSlots.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-1 ml-1">남기실 말씀 (선택)</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={memo}
+                      onChange={(e) => setMemo(e.target.value.slice(0, VISIT_MEMO_MAX))}
+                      maxLength={VISIT_MEMO_MAX}
+                      placeholder="예: 주말 오전 방문 희망합니다"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-full h-10 pl-4 pr-14 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
+                      {memo.length}/{VISIT_MEMO_MAX}
+                    </span>
+                  </div>
                 </div>
 
                 {status === "error" && (
