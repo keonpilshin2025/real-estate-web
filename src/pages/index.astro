@@ -9,6 +9,7 @@ import Hero from "../components/Hero.jsx";
 import QuickMenu from "../components/QuickMenu.jsx";
 import InquiryForm from "../components/InquiryForm.jsx";
 import ReviewCard from "../components/ReviewCard.jsx";
+import VisitReservationButton from "../components/VisitReservationButton.jsx";
 
 const siteName = "센트럴공인중개사 사무소";
 const ceoName = "박은미";
@@ -86,27 +87,28 @@ const regNo = "41133-2020-00049";
 </script>
 <Layout title="여수동 센트럴공인중개사 사무소">
   <Container>
-	<header class="flex flex-col lg:flex-row justify-between items-center my-5">
-		<div class="flex w-full lg:w-auto items-center justify-between">
-			<a href="/" class="text-lg flex items-center">
-			<span class="font-bold text-slate-800 text-2xl">센트럴공인중개사 사무소</span>
-			</a>
-		</div>
+	<header class="flex flex-col lg:flex-row justify-between items-center my-5 gap-3">
+    <div class="flex w-full lg:w-auto items-center justify-between">
+        <a href="/" class="text-lg flex items-center">
+        <span class="font-bold text-slate-800 text-2xl">센트럴공인중개사 사무소</span>
+        </a>
+        <div class="lg:hidden">
+            <VisitReservationButton client:load />
+        </div>
+    </div>
 
-		<div class="hidden lg:flex items-center gap-6">
-			<!-- 비즈니스 정보 배치 -->
-			<div class="flex flex-col items-end">
-			<span class="text-[10px] text-slate-400 uppercase tracking-widest">Consulting</span>
-			<a href="tel:031-721-0082" class="text-xl font-bold text-slate-800 hover:text-violet-500 transition">
-				031-721-0082
-			</a>
-			</div>
-			<!-- 강조된 버튼 -->
-			<a href="#contact" class="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition">
-			방문 예약하기
-			</a>
-		</div>
-		</header>
+    <div class="hidden lg:flex items-center gap-6">
+        <!-- 비즈니스 정보 배치 -->
+        <div class="flex flex-col items-end">
+        <span class="text-[10px] text-slate-400 uppercase tracking-widest">Consulting</span>
+        <a href="tel:031-721-0082" class="text-xl font-bold text-slate-800 hover:text-violet-500 transition">
+            031-721-0082
+        </a>
+        </div>
+        <!-- 강조된 버튼 -->
+        <VisitReservationButton client:load />
+    </div>
+    </header>
 
     <main class="mt-16">
       <!-- 히어로: 새 디자인 (그라디언트 + 급매물/전화 CTA + 네이버 링크 내장) -->

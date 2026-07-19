@@ -12,7 +12,7 @@ export default function Hero({ contact = "031-721-0082" }) {
       </h2>
 
       <p className="text-sm md:text-base text-slate-500 mb-8">
-        믿을 수 있는 상담, 센트럴공인중개사가 약속드립니다
+        믿을 수 있는 상담, 센트럴이 약속드립니다
       </p>
 
       <div className="flex flex-col sm:flex-row justify-center gap-3">
