@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 export default function ChangePasswordButton() {
   const [open, setOpen] = useState(false);
@@ -39,6 +40,76 @@ export default function ChangePasswordButton() {
     }
   }
 
+  const modal = (
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100] p-4"
+      onClick={() => setOpen(false)}
+    >
+      <div
+        className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-sm font-semibold text-slate-800">비밀번호 변경</h3>
+          <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">닫기 ✕</button>
+        </div>
+
+        {success ? (
+          <div className="text-center py-4">
+            <p className="text-sm text-green-600 mb-4">비밀번호가 변경되었습니다.</p>
+            <button onClick={() => setOpen(false)} className="bg-violet-400 text-white rounded-full h-9 px-6 text-xs font-medium hover:bg-violet-500">
+              확인
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2 text-xs">
+            <input
+              type="password"
+              placeholder="현재 비밀번호"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              className="border border-slate-200 rounded-lg h-9 px-3"
+              required
+            />
+            <input
+              type="password"
+              placeholder="새 비밀번호"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              className="border border-slate-200 rounded-lg h-9 px-3"
+              required
+            />
+            <input
+              type="password"
+              placeholder="새 비밀번호 확인"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="border border-slate-200 rounded-lg h-9 px-3"
+              required
+            />
+            {error && <p className="text-red-500">{error}</p>}
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex-1 border border-slate-200 rounded-full h-9 text-xs hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 bg-violet-400 text-white rounded-full h-9 font-medium hover:bg-violet-500 disabled:opacity-50"
+              >
+                {saving ? "변경 중..." : "변경하기"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <button
@@ -48,75 +119,7 @@ export default function ChangePasswordButton() {
         비밀번호 변경
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100] p-4"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-semibold text-slate-800">비밀번호 변경</h3>
-              <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">닫기 ✕</button>
-            </div>
-
-            {success ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-green-600 mb-4">비밀번호가 변경되었습니다.</p>
-                <button onClick={() => setOpen(false)} className="bg-violet-400 text-white rounded-full h-9 px-6 text-xs font-medium hover:bg-violet-500">
-                  확인
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-2 text-xs">
-                <input
-                  type="password"
-                  placeholder="현재 비밀번호"
-                  value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                  required
-                />
-                <input
-                  type="password"
-                  placeholder="새 비밀번호"
-                  value={next}
-                  onChange={(e) => setNext(e.target.value)}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                  required
-                />
-                <input
-                  type="password"
-                  placeholder="새 비밀번호 확인"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                  required
-                />
-                {error && <p className="text-red-500">{error}</p>}
-                <div className="flex gap-2 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setOpen(false)}
-                    className="flex-1 border border-slate-200 rounded-full h-9 text-xs hover:bg-slate-50"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 bg-violet-400 text-white rounded-full h-9 font-medium hover:bg-violet-500 disabled:opacity-50"
-                  >
-                    {saving ? "변경 중..." : "변경하기"}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      {open && typeof document !== "undefined" && createPortal(modal, document.body)}
     </>
   );
 }
