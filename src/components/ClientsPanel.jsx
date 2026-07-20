@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
+import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const BUDGET_RANGES = [
   "1억대", "2억대", "3억대", "4억대", "5억대",
   "6억대", "7억대", "8억대", "9억대", "10억대", "10억 이상",
+];
+
+const EXCEL_COLUMNS = [
+  { key: "name", label: "이름" },
+  { key: "phone", label: "연락처" },
+  { key: "transaction_type", label: "거래유형" },
+  { key: "budget_range", label: "예산범위" },
+  { key: "desired_move_in_month", label: "희망입주월" },
+  { key: "description", label: "고객설명" },
+  { key: "address", label: "주소" },
+  { key: "memo", label: "비고" },
 ];
 
 const emptyForm = {
@@ -20,6 +32,7 @@ export default function ClientsPanel() {
   const [editingId, setEditingId] = useState(null);
   const [q, setQ] = useState("");
   const [nameError, setNameError] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   async function fetchClients() {
     setLoading(true);
@@ -35,6 +48,19 @@ export default function ClientsPanel() {
   function handleSearch(e) {
     e.preventDefault();
     fetchClients();
+  }
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/clients?limit=10000");
+      const data = await res.json();
+      exportToExcel(data, EXCEL_COLUMNS, `고객목록_${todayStr()}.xlsx`);
+    } catch (e) {
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   const [composing, setComposing] = useState(false);
@@ -122,6 +148,14 @@ export default function ClientsPanel() {
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={exporting}
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+        >
+          {exporting ? "다운로드 중..." : "엑셀 다운로드"}
+        </button>
         <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800">
           + 고객 등록
         </button>

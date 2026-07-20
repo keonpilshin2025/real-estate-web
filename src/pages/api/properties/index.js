@@ -3,12 +3,14 @@ import { getDb } from "../../../lib/db.js";
 
 export const prerender = false;
 
-// GET /api/properties?q=검색어&type=아파트
+// GET /api/properties?q=검색어&type=아파트&limit=10000
 export async function GET({ request }) {
   const sql = getDb(env.DATABASE_URL);
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || "";
   const type = url.searchParams.get("type") || "";
+  const limitParam = Number(url.searchParams.get("limit"));
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 10000) : 20;
 
   const rows = await sql`
     SELECT p.*, pa.agency_name AS partner_agency_name
@@ -18,7 +20,7 @@ export async function GET({ request }) {
       (${type} = '' OR p.property_type = ${type})
       AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.address ILIKE ${'%' + q + '%'})
     ORDER BY p.created_at DESC
-    LIMIT 20
+    LIMIT ${limit}
   `;
 
   return new Response(JSON.stringify(rows), {

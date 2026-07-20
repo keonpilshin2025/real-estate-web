@@ -3,11 +3,52 @@ import ContractPopup from "./ContractPopup.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
 import ClientPopup from "./ClientPopup.jsx";
 import PartnerAgencyPopup from "./PartnerAgencyPopup.jsx";
+import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
 const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
 const CONTRACT_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
 const MAN = 10000;
+
+function formatEokMan(n) {
+  if (!n) return "-";
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+
+function formatDateTimeStr(v) {
+  if (!v) return "-";
+  return String(v).slice(0, 16).replace("T", " ");
+}
+
+const EXCEL_COLUMNS = [
+  { key: "contract_type", label: "계약유형" },
+  { key: "brokerage_type", label: "중개유형" },
+  { key: "partner_agency_name", label: "물건지부동산", format: (v) => v || "-" },
+  { key: "property_name", label: "매물명" },
+  { key: "property_dong", label: "동" },
+  { key: "property_ho", label: "호수" },
+  { key: "client_name", label: "고객명" },
+  { key: "client_phone", label: "연락처" },
+  { key: "client_role", label: "역할" },
+  {
+    key: "price",
+    label: "금액",
+    format: (_v, row) => formatEokMan(row.contract_type === "월세" ? row.deposit : row.price),
+  },
+  { key: "monthly_rent", label: "월세", format: (v) => (v ? formatEokMan(v) : "-") },
+  { key: "down_payment", label: "계약금", format: (v) => formatEokMan(v) },
+  { key: "balance_amount", label: "잔금", format: (v) => formatEokMan(v) },
+  { key: "contract_date", label: "계약일시", format: (v) => formatDateTimeStr(v) },
+  { key: "balance_date", label: "잔금일시", format: (v) => formatDateTimeStr(v) },
+  { key: "move_in_date", label: "계약만료일", format: (v) => (v ? String(v).slice(0, 10) : "-") },
+  { key: "memo", label: "비고" },
+];
 
 function EokManInput({ value, onChange, readOnly }) {
   const raw = Number(value || 0);
@@ -90,6 +131,7 @@ export default function ContractMapping() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const [clientQuery, setClientQuery] = useState("");
   const [clientResults, setClientResults] = useState([]);
@@ -124,6 +166,19 @@ export default function ContractMapping() {
   }
 
   useEffect(() => { fetchContracts(); fetchAgencies(); }, []);
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/contracts");
+      const data = await res.json();
+      exportToExcel(data, EXCEL_COLUMNS, `계약목록_${todayStr()}.xlsx`);
+    } catch (e) {
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // 매물 + 계약유형이 정해지면 충돌 여부 체크
   useEffect(() => {
@@ -336,7 +391,14 @@ export default function ContractMapping() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={handleExportExcel}
+          disabled={exporting}
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+        >
+          {exporting ? "다운로드 중..." : "엑셀 다운로드"}
+        </button>
         <button
           onClick={() => setShowForm(true)}
           className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
 const PROPERTY_TYPES = ["아파트", "빌라", "상가"];
@@ -37,6 +38,29 @@ function EokManInput({ value, onChange }) {
   );
 }
 
+const EXCEL_COLUMNS = [
+  { key: "property_type", label: "구분" },
+  { key: "property_name", label: "매물명" },
+  { key: "dong", label: "동" },
+  { key: "ho", label: "호수" },
+  { key: "unit_type", label: "평형" },
+  { key: "transaction_type", label: "거래유형" },
+  {
+    key: "asking_price",
+    label: "희망가",
+    format: (_v, row) =>
+      row.transaction_type === "월세"
+        ? `${formatEokMan(row.asking_deposit)} / ${formatEokMan(row.asking_monthly_rent)}`
+        : formatEokMan(row.asking_price),
+  },
+  { key: "owner_name", label: "매도자/임대인 성명" },
+  { key: "owner_phone", label: "매도자/임대인 연락처" },
+  { key: "partner_agency_name", label: "물건지부동산", format: (v) => v || "단독" },
+  { key: "address", label: "주소" },
+  { key: "features", label: "특장점" },
+  { key: "memo", label: "비고" },
+];
+
 const emptyForm = {
   property_name: "",
   property_type: "",
@@ -64,6 +88,7 @@ export default function PropertiesPanel() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [q, setQ] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const [presets, setPresets] = useState({}); // { 센트럴타운: { address, dongs: {...} } }
   const [isOtherName, setIsOtherName] = useState(false);
@@ -99,6 +124,19 @@ export default function PropertiesPanel() {
   function handleSearch(e) {
     e.preventDefault();
     fetchProperties();
+  }
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/properties?limit=10000");
+      const data = await res.json();
+      exportToExcel(data, EXCEL_COLUMNS, `매물목록_${todayStr()}.xlsx`);
+    } catch (e) {
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   // 매물명 선택
@@ -205,6 +243,14 @@ export default function PropertiesPanel() {
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={exporting}
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+        >
+          {exporting ? "다운로드 중..." : "엑셀 다운로드"}
+        </button>
         <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800">
           + 매물 등록
         </button>

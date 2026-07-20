@@ -3,6 +3,48 @@ import ClientPopup from "./ClientPopup.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
 import ContractPopup from "./ContractPopup.jsx";
 import PartnerAgencyPopup from "./PartnerAgencyPopup.jsx";
+import { exportToExcel, todayStr } from "../lib/excelExport.js";
+
+const EOK = 100000000;
+const MAN = 10000;
+
+function formatEokMan(n) {
+  if (!n) return "-";
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+
+function formatDateTimeStr(v) {
+  if (!v) return "-";
+  return String(v).slice(0, 16).replace("T", " ");
+}
+
+const EXCEL_COLUMNS = [
+  { key: "contract_type", label: "계약유형" },
+  { key: "brokerage_type", label: "중개유형" },
+  { key: "partner_agency_name", label: "물건지부동산", format: (v) => v || "-" },
+  { key: "property_name", label: "매물명" },
+  { key: "property_dong", label: "동" },
+  { key: "property_ho", label: "호수" },
+  { key: "property_unit_type", label: "평형" },
+  { key: "client_name", label: "이름" },
+  { key: "client_phone", label: "연락처" },
+  { key: "client_role", label: "구분" },
+  {
+    key: "price",
+    label: "금액",
+    format: (_v, row) => formatEokMan(row.contract_type === "월세" ? row.deposit : row.price),
+  },
+  { key: "monthly_rent", label: "월세", format: (v) => (v ? formatEokMan(v) : "-") },
+  { key: "balance_date", label: "잔금일시", format: (v) => formatDateTimeStr(v) },
+  { key: "move_in_date", label: "계약만료일", format: (v) => (v ? String(v).slice(0, 10) : "-") },
+  { key: "memo", label: "비고" },
+];
 
 export default function ContractsListPanel() {
   const [contracts, setContracts] = useState([]);
@@ -12,6 +54,7 @@ export default function ContractsListPanel() {
   const [openPropertyId, setOpenPropertyId] = useState(null);
   const [openContractId, setOpenContractId] = useState(null);
   const [openAgencyId, setOpenAgencyId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   async function fetchContracts() {
     setLoading(true);
@@ -29,6 +72,19 @@ export default function ContractsListPanel() {
     fetchContracts();
   }
 
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/contracts");
+      const data = await res.json();
+      exportToExcel(data, EXCEL_COLUMNS, `계약목록(전체)_${todayStr()}.xlsx`);
+    } catch (e) {
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-2 items-center">
@@ -40,6 +96,15 @@ export default function ContractsListPanel() {
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1"
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={exporting}
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+        >
+          {exporting ? "다운로드 중..." : "엑셀 다운로드"}
+        </button>
       </form>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

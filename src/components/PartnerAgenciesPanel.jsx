@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
+import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
 const emptyForm = { agency_name: "", phone: "", mobile_phone: "", address: "" };
+
+const EXCEL_COLUMNS = [
+  { key: "agency_name", label: "부동산명" },
+  { key: "phone", label: "전화번호" },
+  { key: "mobile_phone", label: "핸드폰번호" },
+  { key: "address", label: "주소" },
+];
 
 function loadDaumPostcodeScript() {
   return new Promise((resolve, reject) => {
@@ -56,6 +64,7 @@ export default function PartnerAgenciesPanel() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [q, setQ] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   async function fetchAgencies() {
     setLoading(true);
@@ -71,6 +80,19 @@ export default function PartnerAgenciesPanel() {
   function handleSearch(e) {
     e.preventDefault();
     fetchAgencies();
+  }
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/partner-agencies?limit=10000");
+      const data = await res.json();
+      exportToExcel(data, EXCEL_COLUMNS, `부동산목록_${todayStr()}.xlsx`);
+    } catch (e) {
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -134,6 +156,14 @@ export default function PartnerAgenciesPanel() {
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={exporting}
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+        >
+          {exporting ? "다운로드 중..." : "엑셀 다운로드"}
+        </button>
         <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800">
           + 부동산 등록
         </button>
