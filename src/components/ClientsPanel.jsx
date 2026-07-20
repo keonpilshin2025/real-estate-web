@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 
-const emptyForm = { name: "", phone: "", description: "", address: "", memo: "" };
+const TRANSACTION_TYPES = ["매매", "전세", "월세"];
+const BUDGET_RANGES = [
+  "1억대", "2억대", "3억대", "4억대", "5억대",
+  "6억대", "7억대", "8억대", "9억대", "10억대", "10억 이상",
+];
+
+const emptyForm = {
+  name: "", phone: "", description: "", address: "", memo: "",
+  transaction_type: "", budget_range: "", desired_move_in_month: "",
+};
 
 export default function ClientsPanel() {
   const [clients, setClients] = useState([]);
@@ -87,6 +96,9 @@ export default function ClientsPanel() {
       description: c.description || "",
       address: c.address || "",
       memo: c.memo || "",
+      transaction_type: c.transaction_type || "",
+      budget_range: c.budget_range || "",
+      desired_move_in_month: c.desired_move_in_month || "",
     });
     setEditingId(c.id);
     setShowForm(true);
@@ -121,18 +133,24 @@ export default function ClientsPanel() {
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">이름</th>
               <th className="px-4 py-3 font-medium">연락처</th>
+              <th className="px-4 py-3 font-medium">거래유형</th>
+              <th className="px-4 py-3 font-medium">예산범위</th>
+              <th className="px-4 py-3 font-medium">희망입주월</th>
               <th className="px-4 py-3 font-medium">고객설명</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && clients.length === 0 && <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-400">등록된 고객이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && clients.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">등록된 고객이 없습니다.</td></tr>}
             {clients.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
                 <td className="px-4 py-3 text-slate-600">{c.phone || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{c.transaction_type || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{c.budget_range || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{c.desired_move_in_month || "-"}</td>
                 <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{c.description || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.address || "-"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -168,6 +186,32 @@ export default function ClientsPanel() {
                 maxLength={11}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              />
+
+              <label className="text-slate-400 col-span-2 -mb-1">희망 조건</label>
+              <select
+                value={form.transaction_type}
+                onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
+              >
+                <option value="">거래유형 선택</option>
+                {TRANSACTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <select
+                value={form.budget_range}
+                onChange={(e) => setForm({ ...form, budget_range: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
+              >
+                <option value="">예산범위 선택</option>
+                {BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+
+              <label className="text-slate-400 col-span-2 -mb-1">희망입주월</label>
+              <input
+                type="month"
+                value={form.desired_move_in_month}
+                onChange={(e) => setForm({ ...form, desired_move_in_month: e.target.value })}
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
 

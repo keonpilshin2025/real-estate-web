@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 
+const TRANSACTION_TYPES = ["매매", "전세", "월세"];
+const BUDGET_RANGES = [
+  "1억대", "2억대", "3억대", "4억대", "5억대",
+  "6억대", "7억대", "8억대", "9억대", "10억대", "10억 이상",
+];
+
 export default function ClientPopup({ clientId, onClose, onSaved }) {
   const [data, setData] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -48,6 +54,9 @@ export default function ClientPopup({ clientId, onClose, onSaved }) {
               <div className="flex flex-col gap-2 text-xs">
                 <Row label="이름" value={data.name} />
                 <Row label="연락처" value={data.phone} />
+                <Row label="거래유형" value={data.transaction_type} />
+                <Row label="예산범위" value={data.budget_range} />
+                <Row label="희망입주월" value={data.desired_move_in_month} />
                 <Row label="고객설명" value={data.description} multiline />
                 <Row label="주소" value={data.address} />
                 <Row label="비고" value={data.memo} multiline />
@@ -63,6 +72,20 @@ export default function ClientPopup({ clientId, onClose, onSaved }) {
                   placeholder="이름" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
                   placeholder="연락처" className="border border-slate-200 rounded-lg h-9 px-3" />
+
+                <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
+                  className="border border-slate-200 rounded-lg h-9 px-3">
+                  <option value="">거래유형 선택</option>
+                  {TRANSACTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <select value={form.budget_range || ""} onChange={(e) => setForm({ ...form, budget_range: e.target.value })}
+                  className="border border-slate-200 rounded-lg h-9 px-3">
+                  <option value="">예산범위 선택</option>
+                  {BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <input type="month" value={form.desired_move_in_month || ""} onChange={(e) => setForm({ ...form, desired_move_in_month: e.target.value })}
+                  className="border border-slate-200 rounded-lg h-9 px-3" />
+
                 <textarea value={form.description || ""} maxLength={500} onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="고객설명" className="border border-slate-200 rounded-lg p-3 h-20" />
                 <input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })}

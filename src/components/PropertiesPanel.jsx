@@ -51,6 +51,8 @@ const emptyForm = {
   asking_price: "",
   asking_deposit: "",
   asking_monthly_rent: "",
+  owner_name: "",
+  owner_phone: "",
 };
 
 export default function PropertiesPanel() {
@@ -167,6 +169,8 @@ export default function PropertiesPanel() {
       asking_price: p.asking_price || "",
       asking_deposit: p.asking_deposit || "",
       asking_monthly_rent: p.asking_monthly_rent || "",
+      owner_name: p.owner_name || "",
+      owner_phone: p.owner_phone || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
     setEditingId(p.id);
@@ -207,13 +211,14 @@ export default function PropertiesPanel() {
               <th className="px-4 py-3 font-medium">평형</th>
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">희망가</th>
+              <th className="px-4 py-3 font-medium">매도자/임대인</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && properties.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && properties.length === 0 && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
             {properties.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{p.property_type}</td>
@@ -226,6 +231,11 @@ export default function PropertiesPanel() {
                   {p.transaction_type === "월세"
                     ? `${formatEokMan(p.asking_deposit)} / ${formatEokMan(p.asking_monthly_rent)}`
                     : formatEokMan(p.asking_price)}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {p.owner_name || p.owner_phone
+                    ? `${p.owner_name || "-"} ${p.owner_phone ? `(${p.owner_phone})` : ""}`
+                    : "-"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{p.address || "-"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -282,6 +292,20 @@ export default function PropertiesPanel() {
                 className={`col-span-2 border border-slate-200 rounded-lg h-9 px-3 ${
                   form.property_type === "상가" ? "bg-white text-slate-800" : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
+              />
+
+              <label className="text-slate-400 col-span-2 -mb-1">매도자(임대인) 정보</label>
+              <input
+                placeholder="매도자(임대인) 성명"
+                value={form.owner_name}
+                onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
+              />
+              <input
+                placeholder="연락처"
+                value={form.owner_phone}
+                onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
               />
 
               <label className="text-slate-400 col-span-2 -mb-1">거래유형 / 희망가</label>

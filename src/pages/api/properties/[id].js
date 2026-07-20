@@ -26,6 +26,7 @@ export async function PUT({ request, params }) {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
+    owner_name, owner_phone,
   } = body;
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
@@ -45,6 +46,8 @@ export async function PUT({ request, params }) {
       asking_price = ${toInt(asking_price)},
       asking_deposit = ${toInt(asking_deposit)},
       asking_monthly_rent = ${toInt(asking_monthly_rent)},
+      owner_name = ${owner_name || null},
+      owner_phone = ${owner_phone || null},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

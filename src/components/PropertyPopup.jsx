@@ -86,6 +86,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <Row label="동/호수" value={[data.dong, data.ho].filter(Boolean).join(" ")} />
                 <Row label="평형" value={data.unit_type} />
                 <Row label="사용유형" value={data.usage_type} />
+                <Row label="매도자/임대인" value={[data.owner_name, data.owner_phone].filter(Boolean).join(" · ")} />
                 <Row label="거래유형" value={data.transaction_type} />
                 <Row
                   label="희망가"
@@ -120,6 +121,13 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                   placeholder="평형" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.usage_type || ""} onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
                   placeholder="사용유형 (상가만)" className="border border-slate-200 rounded-lg h-9 px-3" />
+
+                <div className="flex gap-2">
+                  <input value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                    placeholder="매도자(임대인) 성명" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
+                  <input value={form.owner_phone || ""} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
+                    placeholder="연락처" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
+                </div>
 
                 <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">

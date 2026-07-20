@@ -26,7 +26,10 @@ export async function GET({ request }) {
 export async function POST({ request }) {
   const sql = getDb(env.DATABASE_URL);
   const body = await request.json();
-  const { name, phone, description, address, memo } = body;
+  const {
+    name, phone, description, address, memo,
+    transaction_type, budget_range, desired_move_in_month,
+  } = body;
 
   if (!name) {
     return new Response(JSON.stringify({ error: "이름은 필수입니다." }), { status: 400 });
@@ -36,8 +39,11 @@ export async function POST({ request }) {
   }
 
   const [row] = await sql`
-    INSERT INTO clients (name, phone, description, address, memo)
-    VALUES (${name}, ${phone || null}, ${description || null}, ${address || null}, ${memo || null})
+    INSERT INTO clients
+      (name, phone, description, address, memo, transaction_type, budget_range, desired_move_in_month)
+    VALUES
+      (${name}, ${phone || null}, ${description || null}, ${address || null}, ${memo || null},
+       ${transaction_type || null}, ${budget_range || null}, ${desired_move_in_month || null})
     RETURNING *
   `;
 
