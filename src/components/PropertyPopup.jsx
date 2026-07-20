@@ -40,12 +40,14 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [agencies, setAgencies] = useState([]);
 
   useEffect(() => {
     fetch(`/api/properties/${propertyId}`).then((r) => r.json()).then((d) => {
       setData(d);
       setForm(d);
     });
+    fetch("/api/partner-agencies").then((r) => r.json()).then((d) => setAgencies(Array.isArray(d) ? d : []));
   }, [propertyId]);
 
   async function handleSave() {
@@ -58,7 +60,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
     setSaving(false);
     if (res.ok) {
       const updated = await res.json();
-      setData(updated);
+      setData((prev) => ({ ...prev, ...updated }));
       setEditing(false);
       onSaved && onSaved(updated);
     } else {
@@ -66,6 +68,13 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
       alert(err.error || "저장에 실패했습니다.");
     }
   }
+
+  const hasFinal = !!data?.active_contract_id;
+  const finalDepositText = hasFinal
+    ? data.final_contract_type === "월세"
+      ? `${formatEokMan(data.final_deposit)} / ${formatEokMan(data.final_monthly_rent)}`
+      : formatEokMan(data.final_price)
+    : null;
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -87,15 +96,38 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <Row label="평형" value={data.unit_type} />
                 <Row label="사용유형" value={data.usage_type} />
                 <Row label="매도자/임대인" value={[data.owner_name, data.owner_phone].filter(Boolean).join(" · ")} />
-                <Row label="거래유형" value={data.transaction_type} />
-                <Row
-                  label="희망가"
-                  value={
-                    data.transaction_type === "월세"
-                      ? `${formatEokMan(data.asking_deposit)} / ${formatEokMan(data.asking_monthly_rent)}`
-                      : formatEokMan(data.asking_price)
-                  }
-                />
+                <Row label="물건지부동산" value={data.partner_agency_name ? `공동 · ${data.partner_agency_name}` : "단독"} />
+
+                {hasFinal ? (
+                  <>
+                    <Row label="계약유형" value={data.final_contract_type} />
+                    <div className="flex gap-2">
+                      <span className="text-slate-400 w-16 shrink-0">최종보증금</span>
+                      <span className="text-violet-600 font-semibold">{finalDepositText}</span>
+                    </div>
+                    <Row
+                      label="희망가(참고)"
+                      value={
+                        data.transaction_type === "월세"
+                          ? `${formatEokMan(data.asking_deposit)} / ${formatEokMan(data.asking_monthly_rent)}`
+                          : formatEokMan(data.asking_price)
+                      }
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Row label="거래유형" value={data.transaction_type} />
+                    <Row
+                      label="희망가"
+                      value={
+                        data.transaction_type === "월세"
+                          ? `${formatEokMan(data.asking_deposit)} / ${formatEokMan(data.asking_monthly_rent)}`
+                          : formatEokMan(data.asking_price)
+                      }
+                    />
+                  </>
+                )}
+
                 <Row label="주소" value={data.address} />
                 <Row label="특장점" value={data.features} multiline />
                 <Row label="비고" value={data.memo} multiline />
@@ -121,6 +153,12 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                   placeholder="평형" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.usage_type || ""} onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
                   placeholder="사용유형 (상가만)" className="border border-slate-200 rounded-lg h-9 px-3" />
+
+                <select value={form.partner_agency_id || ""} onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
+                  className="border border-slate-200 rounded-lg h-9 px-3">
+                  <option value="">물건지부동산 없음 (단독중개)</option>
+                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}</option>)}
+                </select>
 
                 <div className="flex gap-2">
                   <input value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })}

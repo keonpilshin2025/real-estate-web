@@ -2,16 +2,7 @@ import { useEffect, useState } from "react";
 import ClientPopup from "./ClientPopup.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
 import ContractPopup from "./ContractPopup.jsx";
-
-// 전세/월세만: 잔금일(YYYY-MM-DDTHH:mm...) 기준 하루 전 날짜(YYYY-MM-DD)를 계약만료일로 계산
-function calcExpiry(contractType, balanceDate) {
-  if (contractType === "매매" || !balanceDate) return null;
-  const d = new Date(balanceDate);
-  if (isNaN(d.getTime())) return null;
-  d.setDate(d.getDate() - 1);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+import PartnerAgencyPopup from "./PartnerAgencyPopup.jsx";
 
 export default function ContractsListPanel() {
   const [contracts, setContracts] = useState([]);
@@ -20,6 +11,7 @@ export default function ContractsListPanel() {
   const [openClientId, setOpenClientId] = useState(null);
   const [openPropertyId, setOpenPropertyId] = useState(null);
   const [openContractId, setOpenContractId] = useState(null);
+  const [openAgencyId, setOpenAgencyId] = useState(null);
 
   async function fetchContracts() {
     setLoading(true);
@@ -55,6 +47,7 @@ export default function ContractsListPanel() {
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">계약유형</th>
+              <th className="px-4 py-3 font-medium">중개유형</th>
               <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동/호수</th>
               <th className="px-4 py-3 font-medium">평형</th>
@@ -68,14 +61,26 @@ export default function ContractsListPanel() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>
+              <tr><td colSpan="11" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>
             )}
             {!loading && contracts.length === 0 && (
-              <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 계약이 없습니다.</td></tr>
+              <tr><td colSpan="11" className="px-4 py-8 text-center text-slate-400">등록된 계약이 없습니다.</td></tr>
             )}
             {contracts.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{c.contract_type}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {c.brokerage_type === "공동" ? (
+                    <button
+                      onClick={() => setOpenAgencyId(c.partner_agency_id)}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-500 hover:bg-blue-100"
+                    >
+                      공동{c.partner_agency_name ? ` · ${c.partner_agency_name}` : ""}
+                    </button>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">단독</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => setOpenPropertyId(c.property_id)}
@@ -106,7 +111,7 @@ export default function ContractsListPanel() {
                   {c.balance_date ? String(c.balance_date).slice(0, 16).replace("T", " ") : "-"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {calcExpiry(c.contract_type, c.balance_date) || "-"}
+                  {c.move_in_date ? String(c.move_in_date).slice(0, 10) : "-"}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => setOpenContractId(c.id)} className="text-violet-400 hover:text-violet-600 text-xs">수정</button>
@@ -135,6 +140,13 @@ export default function ContractsListPanel() {
         <ContractPopup
           contractId={openContractId}
           onClose={() => setOpenContractId(null)}
+          onSaved={fetchContracts}
+        />
+      )}
+      {openAgencyId && (
+        <PartnerAgencyPopup
+          agencyId={openAgencyId}
+          onClose={() => setOpenAgencyId(null)}
           onSaved={fetchContracts}
         />
       )}

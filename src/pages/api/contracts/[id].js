@@ -10,10 +10,12 @@ export async function GET({ params }) {
     SELECT
       c.*,
       p.property_name, p.dong AS property_dong, p.ho AS property_ho,
-      cl.name AS client_name, cl.phone AS client_phone
+      cl.name AS client_name, cl.phone AS client_phone,
+      pa.agency_name AS partner_agency_name
     FROM contracts c
     JOIN properties p ON p.id = c.property_id
     JOIN clients cl ON cl.id = c.client_id
+    LEFT JOIN partner_agencies pa ON pa.id = c.partner_agency_id
     WHERE c.id = ${id}
   `;
 
@@ -35,9 +37,12 @@ export async function PUT({ request, params }) {
     property_id, client_id, client_role, contract_type,
     price, deposit, monthly_rent, down_payment, balance_amount,
     contract_date, balance_date, move_in_date, memo,
+    partner_agency_id,
   } = body;
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
+  const partnerAgencyIdInt = toInt(partner_agency_id);
+  const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
 
   try {
     const [row] = await sql`
@@ -55,6 +60,8 @@ export async function PUT({ request, params }) {
         balance_date = ${balance_date || null},
         move_in_date = ${move_in_date || null},
         memo = ${memo || null},
+        partner_agency_id = ${partnerAgencyIdInt},
+        brokerage_type = ${brokerageType},
         updated_at = now()
       WHERE id = ${id}
       RETURNING *

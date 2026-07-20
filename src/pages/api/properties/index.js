@@ -11,11 +11,13 @@ export async function GET({ request }) {
   const type = url.searchParams.get("type") || "";
 
   const rows = await sql`
-    SELECT * FROM properties
+    SELECT p.*, pa.agency_name AS partner_agency_name
+    FROM properties p
+    LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
     WHERE
-      (${type} = '' OR property_type = ${type})
-      AND (${q} = '' OR property_name ILIKE ${'%' + q + '%'} OR address ILIKE ${'%' + q + '%'})
-    ORDER BY created_at DESC
+      (${type} = '' OR p.property_type = ${type})
+      AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.address ILIKE ${'%' + q + '%'})
+    ORDER BY p.created_at DESC
     LIMIT 20
   `;
 
@@ -34,7 +36,7 @@ export async function POST({ request }) {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-    owner_name, owner_phone,
+    owner_name, owner_phone, partner_agency_id,
   } = body;
 
   if (!property_name || !property_type) {
@@ -47,12 +49,12 @@ export async function POST({ request }) {
     INSERT INTO properties
       (property_name, property_type, dong, ho, address, unit_type, usage_type, features, memo,
        transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-       owner_name, owner_phone)
+       owner_name, owner_phone, partner_agency_id)
     VALUES
       (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${address || null},
        ${unit_type || null}, ${usage_type || null}, ${features || null}, ${memo || null},
        ${transaction_type || null}, ${toInt(asking_price)}, ${toInt(asking_deposit)}, ${toInt(asking_monthly_rent)},
-       ${owner_name || null}, ${owner_phone || null})
+       ${owner_name || null}, ${owner_phone || null}, ${toInt(partner_agency_id)})
     RETURNING *
   `;
 

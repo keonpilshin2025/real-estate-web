@@ -10,16 +10,16 @@ function formatWon(n) {
   return Number(n).toLocaleString("ko-KR") + "원";
 }
 
-function calcExpiry(contractType, balanceDate) {
-  if (contractType === "매매" || !balanceDate) return null;
+// 계약만료일 기본값 = 잔금일(입주일) + 2년
+function calcExpiry2Years(balanceDate) {
+  if (!balanceDate) return null;
   const d = new Date(balanceDate);
   if (isNaN(d.getTime())) return null;
-  d.setDate(d.getDate() - 1);
+  d.setFullYear(d.getFullYear() + 2);
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// 이미 계산되어 저장된 값(move_in_date 등)도 혹시 ISO 문자열이면 날짜만 잘라서 보여줌
 function formatDateOnly(value) {
   if (!value) return "";
   return String(value).slice(0, 10);
@@ -77,12 +77,15 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [agencies, setAgencies] = useState([]);
+  const [moveInTouched, setMoveInTouched] = useState(false);
 
   useEffect(() => {
     fetch(`/api/contracts/${contractId}`).then((r) => r.json()).then((d) => {
       setData(d);
       setForm(d);
     });
+    fetch("/api/partner-agencies").then((r) => r.json()).then((d) => setAgencies(Array.isArray(d) ? d : []));
   }, [contractId]);
 
   function recalcBalance(next) {
@@ -92,8 +95,27 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
     } else {
       next.balance_amount = "";
     }
-    next.move_in_date = calcExpiry(next.contract_type, next.balance_date) || "";
     return next;
+  }
+
+  function handleContractTypeChange(value) {
+    setForm((prev) => {
+      let next = recalcBalance({ ...prev, contract_type: value });
+      if (!moveInTouched) {
+        next.move_in_date = value !== "매매" ? (calcExpiry2Years(prev.balance_date) || "") : "";
+      }
+      return next;
+    });
+  }
+
+  function handleBalanceDateChange(value) {
+    setForm((prev) => {
+      let next = recalcBalance({ ...prev, balance_date: value });
+      if (!moveInTouched && prev.contract_type !== "매매") {
+        next.move_in_date = calcExpiry2Years(value) || "";
+      }
+      return next;
+    });
   }
 
   async function handleSave() {
@@ -115,6 +137,8 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
     }
   }
 
+  const brokerageType = form?.partner_agency_id ? "공동" : "단독";
+
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -129,9 +153,10 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
 
             {!editing ? (
               <div className="flex flex-col gap-2 text-xs">
-                <Row label="물건" value={`${data.property_name} ${data.property_dong || ""} ${data.property_ho || ""}`} />
+                <Row label="매물" value={`${data.property_name} ${data.property_dong || ""} ${data.property_ho || ""}`} />
                 <Row label="고객" value={`${data.client_name} · ${data.client_phone || "-"}`} />
                 <Row label="구분" value={data.client_role} />
+                <Row label="중개유형" value={data.brokerage_type === "공동" ? `공동 · ${data.partner_agency_name || ""}` : "단독"} />
                 <Row label="계약유형" value={data.contract_type} />
                 <Row label="금액" value={formatWon(data.contract_type === "월세" ? data.deposit : data.price)} />
                 {data.contract_type === "월세" && <Row label="월세" value={formatWon(data.monthly_rent)} />}
@@ -140,7 +165,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <Row label="계약일시" value={data.contract_date ? String(data.contract_date).slice(0, 16).replace("T", " ") : "-"} />
                 <Row label="잔금일시" value={data.balance_date ? String(data.balance_date).slice(0, 16).replace("T", " ") : "-"} />
                 {data.contract_type !== "매매" && (
-                  <Row label="계약만료일" value={calcExpiry(data.contract_type, data.balance_date) || "-"} />
+                  <Row label="계약만료일" value={formatDateOnly(data.move_in_date) || "-"} />
                 )}
                 <Row label="비고" value={data.memo} multiline />
                 <div className="flex justify-end gap-2 mt-3">
@@ -152,7 +177,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
             ) : (
               <div className="flex flex-col gap-2 text-xs">
                 <div className="bg-slate-50 rounded-lg p-2 text-slate-500">
-                  물건: {data.property_name} {data.property_dong} {data.property_ho} · 고객: {data.client_name}
+                  매물: {data.property_name} {data.property_dong} {data.property_ho} · 고객: {data.client_name}
                 </div>
 
                 <select value={form.client_role} onChange={(e) => setForm({ ...form, client_role: e.target.value })}
@@ -160,7 +185,19 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                   {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
 
-                <select value={form.contract_type} onChange={(e) => setForm((prev) => recalcBalance({ ...prev, contract_type: e.target.value }))}
+                <label className="text-slate-400 -mb-1">
+                  물건지부동산 (공동중개인 경우) — 중개유형:{" "}
+                  <span className={brokerageType === "공동" ? "text-blue-500 font-semibold" : "text-slate-500 font-semibold"}>
+                    {brokerageType}
+                  </span>
+                </label>
+                <select value={form.partner_agency_id || ""} onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
+                  className="border border-slate-200 rounded-lg h-9 px-3">
+                  <option value="">없음 (단독중개)</option>
+                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}</option>)}
+                </select>
+
+                <select value={form.contract_type} onChange={(e) => handleContractTypeChange(e.target.value)}
                   className="border border-slate-200 rounded-lg h-9 px-3">
                   {CONTRACT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -188,20 +225,19 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <EokManInput value={form.down_payment} onChange={(v) => setForm((prev) => recalcBalance({ ...prev, down_payment: v }))} />
 
                 <span className="text-slate-400">잔금일시</span>
-                <DateTime10Input value={form.balance_date} onChange={(v) => setForm((prev) => recalcBalance({ ...prev, balance_date: v }))} />
+                <DateTime10Input value={form.balance_date} onChange={handleBalanceDateChange} />
 
                 <span className="text-slate-400">잔금 (자동계산)</span>
                 <EokManInput value={form.balance_amount} onChange={() => {}} readOnly />
 
                 {form.contract_type !== "매매" && (
                   <>
-                    <span className="text-slate-400">계약만료일 (자동계산)</span>
+                    <span className="text-slate-400">계약만료일 (잔금일 +2년 기본값, 직접 수정 가능)</span>
                     <input
-                      type="text"
-                      readOnly
-                      value={calcExpiry(form.contract_type, form.balance_date) || formatDateOnly(form.move_in_date)}
-                      placeholder="잔금일시 입력 시 자동으로 계산됩니다"
-                      className="border border-slate-200 rounded-lg h-9 px-3 bg-violet-50 text-violet-600 font-medium"
+                      type="date"
+                      value={formatDateOnly(form.move_in_date)}
+                      onChange={(e) => { setMoveInTouched(true); setForm({ ...form, move_in_date: e.target.value }); }}
+                      className="border border-slate-200 rounded-lg h-9 px-3"
                     />
                   </>
                 )}
@@ -210,7 +246,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                   placeholder="비고" className="border border-slate-200 rounded-lg p-3 h-16" />
 
                 <div className="flex justify-end gap-2 mt-2">
-                  <button onClick={() => { setEditing(false); setForm(data); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
+                  <button onClick={() => { setEditing(false); setForm(data); setMoveInTouched(false); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
                   <button onClick={handleSave} disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
                     {saving ? "저장 중..." : "저장"}
                   </button>

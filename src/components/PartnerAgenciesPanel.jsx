@@ -1,0 +1,218 @@
+import { useEffect, useState } from "react";
+
+const emptyForm = { agency_name: "", phone: "", mobile_phone: "", address: "" };
+
+function loadDaumPostcodeScript() {
+  return new Promise((resolve, reject) => {
+    if (window.daum && window.daum.Postcode) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("우편번호 서비스를 불러오지 못했습니다."));
+    document.head.appendChild(script);
+  });
+}
+
+function AddressSearchButton({ onSelect }) {
+  const [loading, setLoading] = useState(false);
+
+  async function openSearch() {
+    setLoading(true);
+    try {
+      await loadDaumPostcodeScript();
+      new window.daum.Postcode({
+        oncomplete: (data) => {
+          const addr = data.roadAddress || data.jibunAddress;
+          onSelect(addr);
+        },
+      }).open();
+    } catch (e) {
+      alert("주소 검색 서비스를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={openSearch}
+      disabled={loading}
+      className="shrink-0 border border-slate-200 rounded-lg h-9 px-3 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+    >
+      {loading ? "불러오는 중..." : "주소 검색"}
+    </button>
+  );
+}
+
+export default function PartnerAgenciesPanel() {
+  const [agencies, setAgencies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [q, setQ] = useState("");
+
+  async function fetchAgencies() {
+    setLoading(true);
+    const params = new URLSearchParams({ q });
+    const res = await fetch(`/api/partner-agencies?${params.toString()}`);
+    const data = await res.json();
+    setAgencies(Array.isArray(data) ? data : []);
+    setLoading(false);
+  }
+
+  useEffect(() => { fetchAgencies(); }, []);
+
+  function handleSearch(e) {
+    e.preventDefault();
+    fetchAgencies();
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+
+    const url = editingId ? `/api/partner-agencies/${editingId}` : "/api/partner-agencies";
+    const method = editingId ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    setSaving(false);
+
+    if (res.ok) {
+      setForm(emptyForm);
+      setEditingId(null);
+      setShowForm(false);
+      fetchAgencies();
+    } else {
+      const data = await res.json();
+      alert(data.error || "저장에 실패했습니다.");
+    }
+  }
+
+  function openAddForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+    setShowForm(true);
+  }
+
+  function openEditForm(a) {
+    setForm({
+      agency_name: a.agency_name || "",
+      phone: a.phone || "",
+      mobile_phone: a.mobile_phone || "",
+      address: a.address || "",
+    });
+    setEditingId(a.id);
+    setShowForm(true);
+  }
+
+  async function handleDelete(id) {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    await fetch(`/api/partner-agencies/${id}`, { method: "DELETE" });
+    fetchAgencies();
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-2 items-center">
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="부동산명 검색"
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1"
+        />
+        <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
+        <div className="flex-1" />
+        <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800">
+          + 부동산 등록
+        </button>
+      </form>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-slate-50 text-slate-500 text-left">
+              <th className="px-4 py-3 font-medium">부동산명</th>
+              <th className="px-4 py-3 font-medium">전화번호</th>
+              <th className="px-4 py-3 font-medium">핸드폰번호</th>
+              <th className="px-4 py-3 font-medium">주소</th>
+              <th className="px-4 py-3 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && agencies.length === 0 && <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-400">등록된 부동산이 없습니다.</td></tr>}
+            {agencies.map((a) => (
+              <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-3 font-medium text-slate-800">{a.agency_name}</td>
+                <td className="px-4 py-3 text-slate-600">{a.phone || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{a.mobile_phone || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{a.address || "-"}</td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button onClick={() => openEditForm(a)} className="text-violet-400 hover:text-violet-600 text-xs mr-3">수정</button>
+                  <button onClick={() => handleDelete(a.id)} className="text-red-400 hover:text-red-600 text-xs">삭제</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingId ? "부동산 정보 수정" : "부동산 등록"}</h3>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-2 text-xs">
+              <input
+                placeholder="부동산명 *"
+                required
+                value={form.agency_name}
+                onChange={(e) => setForm({ ...form, agency_name: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
+              />
+              <input
+                placeholder="전화번호"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
+              />
+              <input
+                placeholder="핸드폰번호"
+                value={form.mobile_phone}
+                onChange={(e) => setForm({ ...form, mobile_phone: e.target.value })}
+                className="border border-slate-200 rounded-lg h-9 px-3"
+              />
+              <div className="flex gap-2">
+                <input
+                  placeholder="주소"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
+                />
+                <AddressSearchButton onSelect={(addr) => setForm((f) => ({ ...f, address: addr }))} />
+              </div>
+
+              <div className="flex justify-end gap-2 mt-2">
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
+                <button type="submit" disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
+                  {saving ? "저장 중..." : editingId ? "수정 완료" : "저장"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

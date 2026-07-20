@@ -6,7 +6,29 @@ export const prerender = false;
 export async function GET({ params }) {
   const sql = getDb(env.DATABASE_URL);
   const id = Number(params.id);
-  const [row] = await sql`SELECT * FROM properties WHERE id = ${id}`;
+
+  const [row] = await sql`
+    SELECT
+      p.*,
+      pa.agency_name AS partner_agency_name,
+      c.id AS active_contract_id,
+      c.contract_type AS final_contract_type,
+      c.price AS final_price,
+      c.deposit AS final_deposit,
+      c.monthly_rent AS final_monthly_rent,
+      c.balance_date AS final_balance_date
+    FROM properties p
+    LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
+    LEFT JOIN LATERAL (
+      SELECT * FROM contracts c2
+      WHERE c2.property_id = p.id
+        AND c2.is_deleted = FALSE
+        AND (c2.balance_date IS NULL OR c2.balance_date >= now())
+      ORDER BY c2.created_at DESC
+      LIMIT 1
+    ) c ON true
+    WHERE p.id = ${id}
+  `;
 
   if (!row) {
     return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
@@ -26,7 +48,7 @@ export async function PUT({ request, params }) {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-    owner_name, owner_phone,
+    owner_name, owner_phone, partner_agency_id,
   } = body;
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
@@ -48,6 +70,7 @@ export async function PUT({ request, params }) {
       asking_monthly_rent = ${toInt(asking_monthly_rent)},
       owner_name = ${owner_name || null},
       owner_phone = ${owner_phone || null},
+      partner_agency_id = ${toInt(partner_agency_id)},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

@@ -53,6 +53,7 @@ const emptyForm = {
   asking_monthly_rent: "",
   owner_name: "",
   owner_phone: "",
+  partner_agency_id: "",
 };
 
 export default function PropertiesPanel() {
@@ -66,6 +67,7 @@ export default function PropertiesPanel() {
 
   const [presets, setPresets] = useState({}); // { 센트럴타운: { address, dongs: {...} } }
   const [isOtherName, setIsOtherName] = useState(false);
+  const [agencies, setAgencies] = useState([]);
 
   async function fetchProperties() {
     setLoading(true);
@@ -82,9 +84,16 @@ export default function PropertiesPanel() {
     setPresets(data || {});
   }
 
+  async function fetchAgencies() {
+    const res = await fetch("/api/partner-agencies");
+    const data = await res.json();
+    setAgencies(Array.isArray(data) ? data : []);
+  }
+
   useEffect(() => {
     fetchProperties();
     fetchPresets();
+    fetchAgencies();
   }, []);
 
   function handleSearch(e) {
@@ -171,6 +180,7 @@ export default function PropertiesPanel() {
       asking_monthly_rent: p.asking_monthly_rent || "",
       owner_name: p.owner_name || "",
       owner_phone: p.owner_phone || "",
+      partner_agency_id: p.partner_agency_id || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
     setEditingId(p.id);
@@ -212,13 +222,14 @@ export default function PropertiesPanel() {
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">희망가</th>
               <th className="px-4 py-3 font-medium">매도자/임대인</th>
+              <th className="px-4 py-3 font-medium">물건지부동산</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && properties.length === 0 && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="11" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && properties.length === 0 && <tr><td colSpan="11" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
             {properties.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{p.property_type}</td>
@@ -236,6 +247,15 @@ export default function PropertiesPanel() {
                   {p.owner_name || p.owner_phone
                     ? `${p.owner_name || "-"} ${p.owner_phone ? `(${p.owner_phone})` : ""}`
                     : "-"}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {p.partner_agency_name ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-500">
+                      공동 · {p.partner_agency_name}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">단독</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{p.address || "-"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -293,6 +313,18 @@ export default function PropertiesPanel() {
                   form.property_type === "상가" ? "bg-white text-slate-800" : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
               />
+
+              <label className="text-slate-400 col-span-2 -mb-1">물건지부동산 (공동중개인 경우)</label>
+              <select
+                value={form.partner_agency_id}
+                onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              >
+                <option value="">없음 (단독중개)</option>
+                {agencies.map((a) => (
+                  <option key={a.id} value={a.id}>{a.agency_name}</option>
+                ))}
+              </select>
 
               <label className="text-slate-400 col-span-2 -mb-1">매도자(임대인) 정보</label>
               <input
