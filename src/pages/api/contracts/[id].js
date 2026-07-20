@@ -37,7 +37,7 @@ export async function PUT({ request, params }) {
     property_id, client_id, client_role, contract_type,
     price, deposit, monthly_rent, down_payment, balance_amount,
     contract_date, balance_date, move_in_date, memo,
-    partner_agency_id,
+    partner_agency_id, deal_status,
   } = body;
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
@@ -62,6 +62,7 @@ export async function PUT({ request, params }) {
         memo = ${memo || null},
         partner_agency_id = ${partnerAgencyIdInt},
         brokerage_type = ${brokerageType},
+        deal_status = ${deal_status || "진행"},
         updated_at = now()
       WHERE id = ${id}
       RETURNING *
