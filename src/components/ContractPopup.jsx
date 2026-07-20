@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
 const CONTRACT_TYPES = ["매매", "전세", "월세"];
+const DEAL_STATUSES = ["대기", "진행", "완료"];
 const EOK = 100000000;
 const MAN = 10000;
 
@@ -10,19 +11,24 @@ function formatWon(n) {
   return Number(n).toLocaleString("ko-KR") + "원";
 }
 
-// 계약만료일 기본값 = 잔금일(입주일) + 2년
-function calcExpiry2Years(balanceDate) {
-  if (!balanceDate) return null;
-  const d = new Date(balanceDate);
-  if (isNaN(d.getTime())) return null;
-  d.setFullYear(d.getFullYear() + 2);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 function formatDateOnly(value) {
   if (!value) return "";
   return String(value).slice(0, 10);
+}
+
+function computeDealStatus(status, balanceDate) {
+  if (status === "완료") return "완료";
+  if (balanceDate) {
+    const d = new Date(balanceDate);
+    if (!isNaN(d.getTime()) && d.getTime() <= Date.now()) return "완료";
+  }
+  return status || "진행";
+}
+
+function isBalancePassed(balanceDate) {
+  if (!balanceDate) return false;
+  const d = new Date(balanceDate);
+  return !isNaN(d.getTime()) && d.getTime() <= Date.now();
 }
 
 function EokManInput({ value, onChange, readOnly }) {
@@ -70,6 +76,15 @@ function DateTime10Input({ value, onChange }) {
       </select>
     </div>
   );
+}
+
+function calcExpiry2Years(balanceDate) {
+  if (!balanceDate) return null;
+  const d = new Date(balanceDate);
+  if (isNaN(d.getTime())) return null;
+  d.setFullYear(d.getFullYear() + 2);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export default function ContractPopup({ contractId, onClose, onSaved }) {
@@ -138,6 +153,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
   }
 
   const brokerageType = form?.partner_agency_id ? "공동" : "단독";
+  const balancePassed = isBalancePassed(form?.balance_date);
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -157,6 +173,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <Row label="고객" value={`${data.client_name} · ${data.client_phone || "-"}`} />
                 <Row label="구분" value={data.client_role} />
                 <Row label="중개유형" value={data.brokerage_type === "공동" ? `공동 · ${data.partner_agency_name || ""}` : "단독"} />
+                <Row label="거래상태" value={computeDealStatus(data.deal_status, data.balance_date)} />
                 <Row label="계약유형" value={data.contract_type} />
                 <Row label="금액" value={formatWon(data.contract_type === "월세" ? data.deposit : data.price)} />
                 {data.contract_type === "월세" && <Row label="월세" value={formatWon(data.monthly_rent)} />}
@@ -184,6 +201,18 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                   className="border border-slate-200 rounded-lg h-9 px-3">
                   {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
+
+                <span className="text-slate-400">거래상태</span>
+                {balancePassed ? (
+                  <div className="border border-slate-200 rounded-lg h-9 px-3 flex items-center bg-green-50 text-green-600 font-medium">
+                    완료 (잔금일 경과로 자동 처리됨)
+                  </div>
+                ) : (
+                  <select value={form.deal_status || "진행"} onChange={(e) => setForm({ ...form, deal_status: e.target.value })}
+                    className="border border-slate-200 rounded-lg h-9 px-3">
+                    {DEAL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
 
                 <label className="text-slate-400 -mb-1">
                   물건지부동산 (공동중개인 경우) — 중개유형:{" "}

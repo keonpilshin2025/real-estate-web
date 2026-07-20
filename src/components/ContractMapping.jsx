@@ -7,6 +7,7 @@ import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
 const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
 const CONTRACT_TYPES = ["매매", "전세", "월세"];
+const DEAL_STATUSES = ["대기", "진행", "완료"];
 const EOK = 100000000;
 const MAN = 10000;
 
@@ -47,6 +48,7 @@ const EXCEL_COLUMNS = [
   { key: "contract_date", label: "계약일시", format: (v) => formatDateTimeStr(v) },
   { key: "balance_date", label: "잔금일시", format: (v) => formatDateTimeStr(v) },
   { key: "move_in_date", label: "계약만료일", format: (v) => (v ? String(v).slice(0, 10) : "-") },
+  { key: "deal_status", label: "거래상태", format: (v) => v || "진행" },
   { key: "memo", label: "비고" },
 ];
 
@@ -122,7 +124,7 @@ const emptyForm = {
   property_id: "", client_id: "", client_role: "", contract_type: "",
   price: "", deposit: "", monthly_rent: "", down_payment: "", balance_amount: "",
   contract_date: "", balance_date: "", move_in_date: "", memo: "",
-  partner_agency_id: "",
+  partner_agency_id: "", deal_status: "진행",
 };
 
 export default function ContractMapping() {
@@ -584,6 +586,15 @@ export default function ContractMapping() {
                   매물에 등록된 거래유형/희망가/물건지부동산이 있으면 아래 값이 자동으로 채워집니다. 실제 협의 내용으로 자유롭게 수정하세요.
                 </p>
               )}
+
+              <label className="text-slate-400 col-span-2 -mb-1">거래상태</label>
+              <select
+                value={form.deal_status}
+                onChange={(e) => setForm({ ...form, deal_status: e.target.value })}
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              >
+                {DEAL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
 
               <label className="text-slate-400 col-span-2 -mb-1">
                 물건지부동산 (공동중개인 경우) — 중개유형:{" "}

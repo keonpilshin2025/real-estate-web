@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
+import AddressField from "./AddressField.jsx";
+import PhoneInput from "./PhoneInput.jsx";
+import AreaCodePhoneInput from "./AreaCodePhoneInput.jsx";
 
 const emptyForm = { agency_name: "", phone: "", mobile_phone: "", address: "" };
 
@@ -9,52 +12,6 @@ const EXCEL_COLUMNS = [
   { key: "mobile_phone", label: "핸드폰번호" },
   { key: "address", label: "주소" },
 ];
-
-function loadDaumPostcodeScript() {
-  return new Promise((resolve, reject) => {
-    if (window.daum && window.daum.Postcode) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("우편번호 서비스를 불러오지 못했습니다."));
-    document.head.appendChild(script);
-  });
-}
-
-function AddressSearchButton({ onSelect }) {
-  const [loading, setLoading] = useState(false);
-
-  async function openSearch() {
-    setLoading(true);
-    try {
-      await loadDaumPostcodeScript();
-      new window.daum.Postcode({
-        oncomplete: (data) => {
-          const addr = data.roadAddress || data.jibunAddress;
-          onSelect(addr);
-        },
-      }).open();
-    } catch (e) {
-      alert("주소 검색 서비스를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={openSearch}
-      disabled={loading}
-      className="shrink-0 border border-slate-200 rounded-lg h-9 px-3 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-    >
-      {loading ? "불러오는 중..." : "주소 검색"}
-    </button>
-  );
-}
 
 export default function PartnerAgenciesPanel() {
   const [agencies, setAgencies] = useState([]);
@@ -203,37 +160,33 @@ export default function PartnerAgenciesPanel() {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingId ? "부동산 정보 수정" : "부동산 등록"}</h3>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-2 text-xs">
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2 text-xs">
               <input
                 placeholder="부동산명 *"
                 required
                 value={form.agency_name}
                 onChange={(e) => setForm({ ...form, agency_name: e.target.value })}
-                className="border border-slate-200 rounded-lg h-9 px-3"
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
-              <input
-                placeholder="전화번호"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="border border-slate-200 rounded-lg h-9 px-3"
-              />
-              <input
-                placeholder="핸드폰번호"
-                value={form.mobile_phone}
-                onChange={(e) => setForm({ ...form, mobile_phone: e.target.value })}
-                className="border border-slate-200 rounded-lg h-9 px-3"
-              />
-              <div className="flex gap-2">
-                <input
-                  placeholder="주소"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
-                />
-                <AddressSearchButton onSelect={(addr) => setForm((f) => ({ ...f, address: addr }))} />
-              </div>
 
-              <div className="flex justify-end gap-2 mt-2">
+              <label className="text-slate-400 col-span-2 -mb-1">전화번호</label>
+              <AreaCodePhoneInput
+                value={form.phone}
+                onChange={(v) => setForm({ ...form, phone: v })}
+                className="col-span-2"
+              />
+
+              <label className="text-slate-400 col-span-2 -mb-1">핸드폰번호</label>
+              <PhoneInput
+                value={form.mobile_phone}
+                onChange={(v) => setForm({ ...form, mobile_phone: v })}
+                placeholder="핸드폰번호"
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              />
+
+              <AddressField value={form.address} onChange={(addr) => setForm((f) => ({ ...f, address: addr }))} />
+
+              <div className="col-span-2 flex justify-end gap-2 mt-2">
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
                 <button type="submit" disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
                   {saving ? "저장 중..." : editingId ? "수정 완료" : "저장"}

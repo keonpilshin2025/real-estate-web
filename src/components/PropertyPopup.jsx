@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PhoneInput from "./PhoneInput.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
@@ -163,8 +164,12 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <div className="flex gap-2">
                   <input value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
                     placeholder="매도자(임대인) 성명" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
-                  <input value={form.owner_phone || ""} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
-                    placeholder="연락처" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
+                  <PhoneInput
+                    value={form.owner_phone}
+                    onChange={(v) => setForm({ ...form, owner_phone: v })}
+                    placeholder="연락처"
+                    className="border border-slate-200 rounded-lg h-9 px-3 flex-1"
+                  />
                 </div>
 
                 <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}

@@ -3,7 +3,7 @@ import { getDb } from "../../../lib/db.js";
 
 export const prerender = false;
 
-// GET /api/contracts  -> 물건명/고객명/물건지부동산 조인해서 리스트로 반환
+// GET /api/contracts  -> 물건명/고객명/물건지부동산/매도자(임대인) 조인해서 리스트로 반환
 export async function GET({ request }) {
   const sql = getDb(env.DATABASE_URL);
   const url = new URL(request.url);
@@ -13,6 +13,7 @@ export async function GET({ request }) {
     SELECT
       c.*,
       p.property_name, p.dong AS property_dong, p.ho AS property_ho, p.unit_type AS property_unit_type,
+      p.owner_name AS property_owner_name, p.owner_phone AS property_owner_phone,
       cl.name AS client_name, cl.phone AS client_phone,
       pa.agency_name AS partner_agency_name
     FROM contracts c
@@ -39,7 +40,7 @@ export async function POST({ request }) {
     property_id, client_id, client_role, contract_type,
     price, deposit, monthly_rent, down_payment, balance_amount,
     contract_date, balance_date, move_in_date, memo,
-    partner_agency_id,
+    partner_agency_id, deal_status,
   } = body;
 
   if (!property_id || !client_id || !client_role || !contract_type) {
@@ -50,9 +51,9 @@ export async function POST({ request }) {
   }
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
-  // 중개유형은 클라이언트 값을 신뢰하지 않고 서버에서 다시 계산 (물건지부동산 존재 여부 기준)
   const partnerAgencyIdInt = toInt(partner_agency_id);
   const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
+  const status = deal_status || "진행";
 
   try {
     const [row] = await sql`
@@ -60,12 +61,12 @@ export async function POST({ request }) {
         (property_id, client_id, client_role, contract_type,
          price, deposit, monthly_rent, down_payment, balance_amount,
          contract_date, balance_date, move_in_date, memo,
-         partner_agency_id, brokerage_type)
+         partner_agency_id, brokerage_type, deal_status)
       VALUES
         (${property_id}, ${client_id}, ${client_role}, ${contract_type},
          ${toInt(price)}, ${toInt(deposit)}, ${toInt(monthly_rent)}, ${toInt(down_payment)}, ${toInt(balance_amount)},
          ${contract_date || null}, ${balance_date || null}, ${move_in_date || null}, ${memo || null},
-         ${partnerAgencyIdInt}, ${brokerageType})
+         ${partnerAgencyIdInt}, ${brokerageType}, ${status})
       RETURNING *
     `;
 

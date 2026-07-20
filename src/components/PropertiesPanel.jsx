@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
+import AddressField from "./AddressField.jsx";
+import PropertyPopup from "./PropertyPopup.jsx";
+import PhoneInput from "./PhoneInput.jsx";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
 const PROPERTY_TYPES = ["아파트", "빌라", "상가"];
@@ -55,7 +58,7 @@ const EXCEL_COLUMNS = [
   },
   { key: "owner_name", label: "매도자/임대인 성명" },
   { key: "owner_phone", label: "매도자/임대인 연락처" },
-  { key: "partner_agency_name", label: "물건지부동산", format: (v) => v || "단독" },
+  { key: "partner_agency_name", label: "중개유형", format: (v) => (v ? `공동 · ${v}` : "단독") },
   { key: "address", label: "주소" },
   { key: "features", label: "특장점" },
   { key: "memo", label: "비고" },
@@ -89,6 +92,7 @@ export default function PropertiesPanel() {
   const [editingId, setEditingId] = useState(null);
   const [q, setQ] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [openDetailId, setOpenDetailId] = useState(null);
 
   const [presets, setPresets] = useState({}); // { 센트럴타운: { address, dongs: {...} } }
   const [isOtherName, setIsOtherName] = useState(false);
@@ -260,26 +264,30 @@ export default function PropertiesPanel() {
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
-              <th className="px-4 py-3 font-medium">구분</th>
               <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동</th>
               <th className="px-4 py-3 font-medium">호수</th>
               <th className="px-4 py-3 font-medium">평형</th>
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">희망가</th>
-              <th className="px-4 py-3 font-medium">매도자/임대인</th>
-              <th className="px-4 py-3 font-medium">물건지부동산</th>
+              <th className="px-4 py-3 font-medium">중개유형</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="11" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && properties.length === 0 && <tr><td colSpan="11" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && properties.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
             {properties.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-3 text-slate-600">{p.property_type}</td>
-                <td className="px-4 py-3 font-medium text-slate-800">{p.property_name}</td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => setOpenDetailId(p.id)}
+                    className="font-medium text-violet-500 hover:underline"
+                  >
+                    {p.property_name}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-slate-600">{p.dong || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.ho || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.unit_type || "-"}</td>
@@ -288,11 +296,6 @@ export default function PropertiesPanel() {
                   {p.transaction_type === "월세"
                     ? `${formatEokMan(p.asking_deposit)} / ${formatEokMan(p.asking_monthly_rent)}`
                     : formatEokMan(p.asking_price)}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {p.owner_name || p.owner_phone
-                    ? `${p.owner_name || "-"} ${p.owner_phone ? `(${p.owner_phone})` : ""}`
-                    : "-"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {p.partner_agency_name ? (
@@ -313,6 +316,14 @@ export default function PropertiesPanel() {
           </tbody>
         </table>
       </div>
+
+      {openDetailId && (
+        <PropertyPopup
+          propertyId={openDetailId}
+          onClose={() => setOpenDetailId(null)}
+          onSaved={fetchProperties}
+        />
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -360,7 +371,7 @@ export default function PropertiesPanel() {
                 }`}
               />
 
-              <label className="text-slate-400 col-span-2 -mb-1">물건지부동산 (공동중개인 경우)</label>
+              <label className="text-slate-400 col-span-2 -mb-1">중개유형 (공동중개 시 부동산 선택)</label>
               <select
                 value={form.partner_agency_id}
                 onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
@@ -379,10 +390,10 @@ export default function PropertiesPanel() {
                 onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
                 className="border border-slate-200 rounded-lg h-9 px-3"
               />
-              <input
-                placeholder="연락처"
+              <PhoneInput
                 value={form.owner_phone}
-                onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
+                onChange={(v) => setForm({ ...form, owner_phone: v })}
+                placeholder="연락처"
                 className="border border-slate-200 rounded-lg h-9 px-3"
               />
 
@@ -475,12 +486,10 @@ export default function PropertiesPanel() {
               )}
 
               {/* 주소 */}
-              <input
-                placeholder="주소"
-                readOnly={isKnown}
+              <AddressField
                 value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className={`col-span-2 border border-slate-200 rounded-lg h-9 px-3 ${isKnown ? "bg-violet-50 text-violet-600" : ""}`}
+                onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+                readOnly={isKnown}
               />
 
               <label className="text-slate-400 col-span-2 -mb-1">특장점 (최대 500자)</label>

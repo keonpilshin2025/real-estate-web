@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PhoneInput from "./PhoneInput.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const BUDGET_RANGES = [
@@ -70,8 +71,12 @@ export default function ClientPopup({ clientId, onClose, onSaved }) {
               <div className="flex flex-col gap-2 text-xs">
                 <input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value.replace(/[^가-힣]/g, "") })}
                   placeholder="이름" className="border border-slate-200 rounded-lg h-9 px-3" />
-                <input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
-                  placeholder="연락처" className="border border-slate-200 rounded-lg h-9 px-3" />
+                <PhoneInput
+                  value={form.phone}
+                  onChange={(v) => setForm({ ...form, phone: v })}
+                  placeholder="연락처"
+                  className="border border-slate-200 rounded-lg h-9 px-3"
+                />
 
                 <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">

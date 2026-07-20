@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
+import AddressField from "./AddressField.jsx";
+import PhoneInput from "./PhoneInput.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const BUDGET_RANGES = [
@@ -213,13 +215,10 @@ export default function ClientsPanel() {
               />
               {nameError && <p className="col-span-2 text-red-400 -mt-1">{nameError}</p>}
 
-              <input
-                placeholder="연락처"
-                type="tel"
-                inputMode="numeric"
-                maxLength={11}
+              <PhoneInput
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
+                onChange={(v) => setForm({ ...form, phone: v })}
+                placeholder="연락처"
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
 
@@ -259,12 +258,8 @@ export default function ClientsPanel() {
               />
               <p className="col-span-2 text-right text-slate-300 -mt-1">{form.description.length}/500</p>
 
-              <input
-                placeholder="(현) 주소 - 계약서용"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              />
+              <label className="text-slate-400 col-span-2 -mb-1">(현) 주소 - 계약서용</label>
+              <AddressField value={form.address} onChange={(addr) => setForm((f) => ({ ...f, address: addr }))} />
 
               <label className="text-slate-400 col-span-2 -mb-1">비고</label>
               <textarea
