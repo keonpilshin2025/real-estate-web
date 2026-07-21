@@ -103,6 +103,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
       ? `${formatEokMan(data.final_deposit)} / ${formatEokMan(data.final_monthly_rent)}`
       : formatEokMan(data.final_price)
     : null;
+  const finalAmountLabel = data?.final_contract_type === "매매" ? "최종매매가" : "최종보증금";
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -149,8 +150,8 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 {hasFinal ? (
                   <>
                     <Row label="계약유형" value={data.final_contract_type} />
-                    <div className="flex gap-2">
-                      <span className="text-slate-400 w-16 shrink-0">최종보증금</span>
+                    <div className="flex gap-2 items-start">
+                      <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">{finalAmountLabel}</span>
                       <span className="text-violet-600 font-semibold">{finalDepositText}</span>
                     </div>
                     <Row
