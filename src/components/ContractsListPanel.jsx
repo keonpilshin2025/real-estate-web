@@ -65,6 +65,16 @@ function DealStatusBadge({ status, balanceDate }) {
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cls}`}>{s}</span>;
 }
 
+// 잔금일시 오름차순 정렬 (빠른 날짜가 먼저, 날짜 없는 계약은 맨 뒤로)
+function sortByBalanceDate(list) {
+  return [...list].sort((a, b) => {
+    if (!a.balance_date && !b.balance_date) return 0;
+    if (!a.balance_date) return 1;
+    if (!b.balance_date) return -1;
+    return new Date(a.balance_date) - new Date(b.balance_date);
+  });
+}
+
 const EXCEL_COLUMNS = [
   { key: "property_name", label: "매물명" },
   { key: "property_dong", label: "동/호수", format: (_v, row) => formatDongHo(row.property_dong, row.property_ho) },
@@ -98,7 +108,7 @@ export default function ContractsListPanel() {
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
-    setContracts(Array.isArray(data) ? data : []);
+    setContracts(sortByBalanceDate(Array.isArray(data) ? data : []));
     setLoading(false);
   }
 
@@ -114,7 +124,7 @@ export default function ContractsListPanel() {
     try {
       const res = await fetch("/api/contracts");
       const data = await res.json();
-      exportToExcel(data, EXCEL_COLUMNS, `계약목록(전체)_${todayStr()}.xlsx`);
+      exportToExcel(sortByBalanceDate(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `계약목록(전체)_${todayStr()}.xlsx`);
     } catch (e) {
       alert("엑셀 다운로드에 실패했습니다.");
     } finally {

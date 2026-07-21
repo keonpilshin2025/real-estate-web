@@ -27,6 +27,16 @@ function formatDateTimeStr(v) {
   return String(v).slice(0, 16).replace("T", " ");
 }
 
+// 잔금일시 오름차순 정렬 (빠른 날짜가 먼저, 날짜 없는 계약은 맨 뒤로)
+function sortByBalanceDate(list) {
+  return [...list].sort((a, b) => {
+    if (!a.balance_date && !b.balance_date) return 0;
+    if (!a.balance_date) return 1;
+    if (!b.balance_date) return -1;
+    return new Date(a.balance_date) - new Date(b.balance_date);
+  });
+}
+
 const EXCEL_COLUMNS = [
   { key: "contract_type", label: "계약유형" },
   { key: "brokerage_type", label: "중개유형" },
@@ -157,7 +167,7 @@ export default function ContractMapping() {
     setLoading(true);
     const res = await fetch("/api/contracts");
     const data = await res.json();
-    setContracts(Array.isArray(data) ? data : []);
+    setContracts(sortByBalanceDate(Array.isArray(data) ? data : []));
     setLoading(false);
   }
 
@@ -174,7 +184,7 @@ export default function ContractMapping() {
     try {
       const res = await fetch("/api/contracts");
       const data = await res.json();
-      exportToExcel(data, EXCEL_COLUMNS, `계약목록_${todayStr()}.xlsx`);
+      exportToExcel(sortByBalanceDate(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `계약목록_${todayStr()}.xlsx`);
     } catch (e) {
       alert("엑셀 다운로드에 실패했습니다.");
     } finally {

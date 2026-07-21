@@ -25,6 +25,11 @@ const emptyForm = {
   transaction_type: "", budget_range: "", desired_move_in_month: "",
 };
 
+// 고객명 가나다순 정렬
+function sortByName(list) {
+  return [...list].sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+}
+
 export default function ClientsPanel() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +46,7 @@ export default function ClientsPanel() {
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/clients?${params.toString()}`);
     const data = await res.json();
-    setClients(Array.isArray(data) ? data : []);
+    setClients(sortByName(Array.isArray(data) ? data : []));
     setLoading(false);
   }
 
@@ -57,7 +62,7 @@ export default function ClientsPanel() {
     try {
       const res = await fetch("/api/clients?limit=10000");
       const data = await res.json();
-      exportToExcel(data, EXCEL_COLUMNS, `고객목록_${todayStr()}.xlsx`);
+      exportToExcel(sortByName(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `고객목록_${todayStr()}.xlsx`);
     } catch (e) {
       alert("엑셀 다운로드에 실패했습니다.");
     } finally {

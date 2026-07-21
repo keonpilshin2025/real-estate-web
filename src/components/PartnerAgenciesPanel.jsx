@@ -13,6 +13,11 @@ const EXCEL_COLUMNS = [
   { key: "address", label: "주소" },
 ];
 
+// 부동산명 가나다순 정렬
+function sortByAgencyName(list) {
+  return [...list].sort((a, b) => (a.agency_name || "").localeCompare(b.agency_name || "", "ko"));
+}
+
 export default function PartnerAgenciesPanel() {
   const [agencies, setAgencies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +33,7 @@ export default function PartnerAgenciesPanel() {
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/partner-agencies?${params.toString()}`);
     const data = await res.json();
-    setAgencies(Array.isArray(data) ? data : []);
+    setAgencies(sortByAgencyName(Array.isArray(data) ? data : []));
     setLoading(false);
   }
 
@@ -44,7 +49,7 @@ export default function PartnerAgenciesPanel() {
     try {
       const res = await fetch("/api/partner-agencies?limit=10000");
       const data = await res.json();
-      exportToExcel(data, EXCEL_COLUMNS, `부동산목록_${todayStr()}.xlsx`);
+      exportToExcel(sortByAgencyName(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `부동산목록_${todayStr()}.xlsx`);
     } catch (e) {
       alert("엑셀 다운로드에 실패했습니다.");
     } finally {
