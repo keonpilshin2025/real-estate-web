@@ -1,0 +1,87 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+
+const complexes = [
+  {
+    name: "센트럴타운",
+    address: "경기도 성남시 중원구 성남대로 1000",
+    dongCount: "301동~323동 (23개동)",
+    units: "29평대 · 33평대",
+    tag: "실속형 중형",
+    tagColor: "bg-violet-50 text-violet-500",
+    desc: "여수동 내 가장 많은 동수를 보유한 대단지. 29~33평대 위주라 신혼부부·젊은 가족 실수요가 두텁고, 매매·전세 매물 회전이 가장 활발한 단지예요.",
+  },
+  {
+    name: "연꽃마을4단지",
+    address: "경기도 성남시 중원구 여수울로 50",
+    dongCount: "401동~410동 (10개동)",
+    units: "38평대 · 45평대 · 50평대 · 62평대",
+    tag: "대형 평형",
+    tagColor: "bg-orange-50 text-orange-500",
+    desc: "3개 단지 중 평형이 가장 넓은 편. 자녀가 있는 4인 이상 가구, 넓은 공간이 필요한 실거주자에게 특히 잘 맞아요.",
+  },
+  {
+    name: "산들마을2단지",
+    address: "경기 성남시 중원구 여수울로 51",
+    dongCount: "201동~216동 (16개동)",
+    units: "21평대 · 25평대",
+    tag: "소형 실속형",
+    tagColor: "bg-green-50 text-green-500",
+    desc: "가장 작은 평형대 위주라 초기 자금 부담이 적어요. 1~2인 가구, 첫 내집마련을 준비하는 분들에게 추천드리는 단지예요.",
+  },
+];
+---
+<Layout title="단지 비교 | 센트럴공인중개사 사무소">
+  <Container>
+    <header class="flex items-center justify-between my-6">
+      <a href="/" class="text-lg font-bold text-slate-800">센트럴공인중개사</a>
+      <a href="/" class="text-sm text-slate-500 hover:text-violet-500 transition">← 홈으로</a>
+    </header>
+
+    <main class="max-w-3xl mx-auto pb-20">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">여수동 단지 비교</h1>
+      <p class="text-slate-500 mb-10">
+        센트럴타운 · 연꽃마을4단지 · 산들마을2단지, 세 단지의 위치와 평형 구성을 한눈에 비교해보세요.
+      </p>
+
+      <div class="flex flex-col gap-5">
+        {complexes.map((c) => (
+          <div class="border border-slate-200 rounded-2xl p-6 hover:shadow-sm transition">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-xl font-bold text-slate-800">{c.name}</h2>
+              <span class={`px-3 py-1 rounded-full text-xs font-medium ${c.tagColor}`}>{c.tag}</span>
+            </div>
+            <p class="text-sm text-slate-500 mb-4 leading-relaxed">{c.desc}</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <div class="bg-slate-50 rounded-xl p-3">
+                <p class="text-xs text-slate-400 mb-1">주소</p>
+                <p class="text-slate-700 font-medium">{c.address}</p>
+              </div>
+              <div class="bg-slate-50 rounded-xl p-3">
+                <p class="text-xs text-slate-400 mb-1">동 구성</p>
+                <p class="text-slate-700 font-medium">{c.dongCount}</p>
+              </div>
+              <div class="bg-slate-50 rounded-xl p-3">
+                <p class="text-xs text-slate-400 mb-1">평형</p>
+                <p class="text-slate-700 font-medium">{c.units}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="mt-10 bg-violet-50 rounded-2xl p-6 text-center">
+        <p class="text-sm text-slate-600 mb-4">
+          동/호수별 정확한 시세와 현재 나와있는 매물이 궁금하시면 편하게 문의해주세요.
+        </p>
+        <a
+          href="tel:031-721-0082"
+          class="inline-block bg-violet-400 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-violet-500 transition"
+        >
+          전화 상담 031-721-0082
+        </a>
+      </div>
+    </main>
+  </Container>
+</Layout>

@@ -8,7 +8,7 @@ const items = [
     label: "단지 비교",
     bg: "bg-violet-50",
     color: "text-violet-500",
-    href: "#complex-compare",
+    href: "/complex-compare",
   },
   {
     icon: (
@@ -19,7 +19,7 @@ const items = [
     label: "학군 정보",
     bg: "bg-green-50",
     color: "text-green-500",
-    href: "#school-district",
+    href: "/school-info",
   },
   {
     icon: (
@@ -30,7 +30,7 @@ const items = [
     label: "개발 호재",
     bg: "bg-indigo-50",
     color: "text-indigo-400",
-    href: "#infra-plan",
+    href: "/development-plan",
   },
   {
     icon: (

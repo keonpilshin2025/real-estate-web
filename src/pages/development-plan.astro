@@ -1,0 +1,82 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+
+const items = [
+  {
+    title: "성남시청 소재지",
+    status: "현재",
+    statusColor: "bg-green-50 text-green-500",
+    desc: "여수동은 2010년 성남시청이 이전하면서 함께 개발된 공공주택지구예요. 시청, 행정 인프라가 이미 동네 안에 자리잡고 있다는 게 다른 신흥 택지지구와 다른 점이에요.",
+  },
+  {
+    title: "지하철 8호선 연장 (모란~판교)",
+    status: "2025.12 확정고시",
+    statusColor: "bg-violet-50 text-violet-500",
+    desc: "국토교통부가 '제2차 경기도 도시철도망 구축계획(2026~2035)'을 확정고시하면서, 8호선 모란~판교 연장(3.94km)이 포함됐어요. 개통되면 여수동 인근에서 8호선을 이용해 판교·잠실 방면 이동이 크게 편해질 전망이에요.",
+  },
+  {
+    title: "성남 1호선 트램 (모란트램)",
+    status: "계획 확정 · 개통시기 미정",
+    statusColor: "bg-indigo-50 text-indigo-400",
+    desc: "판교역~GTX 성남역~성남공단을 잇는 노면전차 노선이에요. 기존 지하철이 닿지 않는 구간을 보완하는 노선으로, 8호선·GTX와 함께 이 일대 교통망을 촘촘하게 채워줄 계획이에요.",
+  },
+  {
+    title: "판교~오포 철도사업",
+    status: "신규 반영",
+    statusColor: "bg-orange-50 text-orange-500",
+    desc: "판교역에서 오포까지 이어지는 9.5km 구간의 철도사업도 이번 도시철도망 계획에 새로 포함됐어요. 판교 생활권 접근성이 한 번 더 넓어지는 호재예요.",
+  },
+  {
+    title: "GTX-A 성남역 (분당 이매동)",
+    status: "이미 개통",
+    statusColor: "bg-green-50 text-green-500",
+    desc: "수서~동탄 구간이 먼저 개통되면서 이용 가능한 GTX-A 성남역이 분당 이매동 쪽에 자리잡고 있어요. 경강선과도 환승되고, 향후 서울역·삼성역까지 연장되면 강남 접근성이 한층 좋아질 예정이에요.",
+  },
+];
+---
+<Layout title="개발 호재 | 센트럴공인중개사 사무소">
+  <Container>
+    <header class="flex items-center justify-between my-6">
+      <a href="/" class="text-lg font-bold text-slate-800">센트럴공인중개사</a>
+      <a href="/" class="text-sm text-slate-500 hover:text-violet-500 transition">← 홈으로</a>
+    </header>
+
+    <main class="max-w-3xl mx-auto pb-20">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">여수동 개발 호재</h1>
+      <p class="text-slate-500 mb-10">
+        판교와 분당을 사이에 둔 여수동은 성남시청 소재지답게 교통망 계획도 촘촘하게 이어지고 있어요.
+      </p>
+
+      <div class="flex flex-col gap-4">
+        {items.map((item) => (
+          <div class="border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-start gap-3">
+            <span class={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${item.statusColor} sm:w-40 text-center`}>
+              {item.status}
+            </span>
+            <div>
+              <h2 class="text-base font-bold text-slate-800 mb-1">{item.title}</h2>
+              <p class="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p class="text-xs text-slate-400 mt-6">
+        ※ 개통 시기는 계획 단계에 따라 변경될 수 있어요. 최신 진행 상황은 성남시청 교통 관련 공지를 참고해주세요.
+      </p>
+
+      <div class="mt-10 bg-violet-50 rounded-2xl p-6 text-center">
+        <p class="text-sm text-slate-600 mb-4">
+          개발호재를 고려한 투자·실거주 매물 상담이 필요하시면 편하게 연락주세요.
+        </p>
+        <a
+          href="tel:031-721-0082"
+          class="inline-block bg-violet-400 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-violet-500 transition"
+        >
+          전화 상담 031-721-0082
+        </a>
+      </div>
+    </main>
+  </Container>
+</Layout>

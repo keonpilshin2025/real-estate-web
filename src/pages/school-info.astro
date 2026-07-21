@@ -1,0 +1,87 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+---
+<Layout title="학군 정보 | 센트럴공인중개사 사무소">
+  <Container>
+    <header class="flex items-center justify-between my-6">
+      <a href="/" class="text-lg font-bold text-slate-800">센트럴공인중개사</a>
+      <a href="/" class="text-sm text-slate-500 hover:text-violet-500 transition">← 홈으로</a>
+    </header>
+
+    <main class="max-w-3xl mx-auto pb-20">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">여수동 학군 정보</h1>
+      <p class="text-slate-500 mb-10">
+        여수동 학군의 가장 큰 특징은, 성남 원도심이 아니라 <strong class="text-violet-500">분당 학군</strong>으로 배정된다는 점이에요.
+      </p>
+
+      <div class="flex flex-col gap-6">
+        <section class="border border-slate-200 rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-8 h-8 flex items-center justify-center bg-green-50 text-green-500 rounded-full text-sm font-bold">초</span>
+            <h2 class="text-lg font-bold text-slate-800">성남여수초등학교</h2>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed mb-3">
+            2014년 개교한 공립 단설 초등학교로, 여수동 내 유일한 초등학교예요. 여수동 대부분 단지와 야탑 일부 지역 학생들이 이 학교로 배정됩니다.
+          </p>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-slate-50 rounded-lg p-3">
+              <p class="text-slate-400 mb-1">주소</p>
+              <p class="text-slate-700 font-medium">경기도 성남시 중원구 여수울로 37</p>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <p class="text-slate-400 mb-1">설립</p>
+              <p class="text-slate-700 font-medium">2014년 3월, 공립 단설</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="border border-slate-200 rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-8 h-8 flex items-center justify-center bg-violet-50 text-violet-500 rounded-full text-sm font-bold">중</span>
+            <h2 class="text-lg font-bold text-slate-800">중학교 배정 — 분당 학군</h2>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            여수동에는 중학교가 없어요. 대신 경기도성남교육지원청 학교군 기준으로 원도심(수정중원 학군)이 아닌
+            <strong class="text-slate-800">분당 중학군</strong>으로 분류되어 있어서, 성남여수초 졸업생은
+            분당구 <strong class="text-slate-800">야탑중학교</strong>로 배정돼요. 원도심 학군보다 분당 학군을 선호하는
+            학부모님들에게는 확실한 장점이에요.
+          </p>
+        </section>
+
+        <section class="border border-slate-200 rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-8 h-8 flex items-center justify-center bg-orange-50 text-orange-500 rounded-full text-sm font-bold">고</span>
+            <h2 class="text-lg font-bold text-slate-800">고등학교 배정 — 분당·판교 학군</h2>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            고등학교도 마찬가지예요. 여수동은 성남 학군 2구역(분당·판교)에 속해서, 거주 학생들은
+            분당구 소재 고등학교로 배정받아요. 초·중·고 전체 학군이 분당 라인으로 이어진다는 게 여수동의 핵심 강점이에요.
+          </p>
+        </section>
+
+        <section class="bg-violet-50 rounded-2xl p-6">
+          <h2 class="text-sm font-bold text-violet-600 mb-3">한 줄 요약</h2>
+          <ul class="text-sm text-slate-700 space-y-2">
+            <li class="flex gap-2"><span class="text-violet-400">✓</span> 여수동 내 성남여수초 하나로 통학 부담이 적음</li>
+            <li class="flex gap-2"><span class="text-violet-400">✓</span> 중학교부터 분당 학군(야탑중)으로 배정</li>
+            <li class="flex gap-2"><span class="text-violet-400">✓</span> 고등학교도 분당·판교 학군 2구역 소속</li>
+            <li class="flex gap-2"><span class="text-violet-400">✓</span> 원도심보다 분당 학군을 선호하는 실수요자에게 유리</li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="mt-10 bg-slate-50 rounded-2xl p-6 text-center">
+        <p class="text-sm text-slate-600 mb-4">
+          자녀 학년, 통학 거리에 맞는 단지가 궁금하시면 상담해드릴게요.
+        </p>
+        <a
+          href="tel:031-721-0082"
+          class="inline-block bg-violet-400 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-violet-500 transition"
+        >
+          전화 상담 031-721-0082
+        </a>
+      </div>
+    </main>
+  </Container>
+</Layout>
