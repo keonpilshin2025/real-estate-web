@@ -25,9 +25,15 @@ function formatDateTimeStr(v) {
 }
 
 // 동/호수 표기: 동이 있으면 "동/호수", 동이 없으면 "/호수"
+// 동 값 끝에 붙은 "동" 글자 제거 (예: "316동" -> "316")
+function stripDongSuffix(dong) {
+  return dong ? dong.replace(/동$/, "") : dong;
+}
+
 function formatDongHo(dong, ho) {
-  if (dong && ho) return `${dong}/${ho}`;
-  if (dong) return dong;
+  const d = stripDongSuffix(dong);
+  if (d && ho) return `${d}/${ho}`;
+  if (d) return d;
   if (ho) return `/${ho}`;
   return "-";
 }
@@ -62,8 +68,17 @@ function DealStatusBadge({ status, balanceDate }) {
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cls}`}>{s}</span>;
 }
 
-function sortByBalanceDate(list) {
+const STATUS_ORDER = { "진행": 0, "대기": 1, "완료": 2 };
+
+// 거래상태(진행 우선) → 잔금일시(빠른 순) 정렬
+function sortByStatusThenBalanceDate(list) {
   return [...list].sort((a, b) => {
+    const sa = computeDealStatus(a.deal_status, a.balance_date);
+    const sb = computeDealStatus(b.deal_status, b.balance_date);
+    const oa = STATUS_ORDER[sa] ?? 99;
+    const ob = STATUS_ORDER[sb] ?? 99;
+    if (oa !== ob) return oa - ob;
+
     if (!a.balance_date && !b.balance_date) return 0;
     if (!a.balance_date) return 1;
     if (!b.balance_date) return -1;
@@ -104,7 +119,7 @@ export default function ContractsListPanel() {
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
-    setContracts(sortByBalanceDate(Array.isArray(data) ? data : []));
+    setContracts(sortByStatusThenBalanceDate(Array.isArray(data) ? data : []));
     setLoading(false);
   }
 
@@ -120,7 +135,7 @@ export default function ContractsListPanel() {
     try {
       const res = await fetch("/api/contracts");
       const data = await res.json();
-      exportToExcel(sortByBalanceDate(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `계약목록(전체)_${todayStr()}.xlsx`);
+      exportToExcel(sortByStatusThenBalanceDate(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `계약목록(전체)_${todayStr()}.xlsx`);
     } catch (e) {
       alert("엑셀 다운로드에 실패했습니다.");
     } finally {

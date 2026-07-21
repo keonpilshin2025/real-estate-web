@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
 import AddressField from "./AddressField.jsx";
 import PhoneInput from "./PhoneInput.jsx";
+import SsnInput from "./SsnInput.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const BUDGET_RANGES = [
@@ -12,22 +13,31 @@ const BUDGET_RANGES = [
 const EXCEL_COLUMNS = [
   { key: "name", label: "이름" },
   { key: "phone", label: "연락처" },
+  { key: "ssn_masked", label: "주민번호", format: (v) => v || "-" },
   { key: "transaction_type", label: "거래유형" },
   { key: "budget_range", label: "예산범위" },
   { key: "desired_move_in_month", label: "희망입주월" },
   { key: "description", label: "고객설명" },
   { key: "address", label: "주소" },
+  { key: "created_at", label: "등록일", format: (v) => (v ? String(v).slice(0, 10) : "-") },
   { key: "memo", label: "비고" },
 ];
 
 const emptyForm = {
   name: "", phone: "", description: "", address: "", memo: "",
-  transaction_type: "", budget_range: "", desired_move_in_month: "",
+  transaction_type: "", budget_range: "", desired_move_in_month: "", ssn: "",
 };
 
-// 고객명 가나다순 정렬
-function sortByName(list) {
-  return [...list].sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+// 등록일시 최신순 정렬
+// 등록일시 정렬 (dir: "desc" 최신순, "asc" 오래된순)
+function sortByCreatedAt(list, dir = "desc") {
+  return [...list].sort((a, b) => {
+    if (!a.created_at && !b.created_at) return 0;
+    if (!a.created_at) return 1;
+    if (!b.created_at) return -1;
+    const diff = new Date(b.created_at) - new Date(a.created_at);
+    return dir === "asc" ? -diff : diff;
+  });
 }
 
 export default function ClientsPanel() {
@@ -40,17 +50,25 @@ export default function ClientsPanel() {
   const [q, setQ] = useState("");
   const [nameError, setNameError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [editingHasSsn, setEditingHasSsn] = useState(false);
+  const [createdAtSortDir, setCreatedAtSortDir] = useState("desc");
 
   async function fetchClients() {
     setLoading(true);
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/clients?${params.toString()}`);
     const data = await res.json();
-    setClients(sortByName(Array.isArray(data) ? data : []));
+    setClients(sortByCreatedAt(Array.isArray(data) ? data : [], createdAtSortDir));
     setLoading(false);
   }
 
   useEffect(() => { fetchClients(); }, []);
+
+  function toggleCreatedAtSort() {
+    const nextDir = createdAtSortDir === "desc" ? "asc" : "desc";
+    setCreatedAtSortDir(nextDir);
+    setClients((prev) => sortByCreatedAt(prev, nextDir));
+  }
 
   function handleSearch(e) {
     e.preventDefault();
@@ -62,7 +80,7 @@ export default function ClientsPanel() {
     try {
       const res = await fetch("/api/clients?limit=10000");
       const data = await res.json();
-      exportToExcel(sortByName(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `고객목록_${todayStr()}.xlsx`);
+      exportToExcel(sortByCreatedAt(Array.isArray(data) ? data : [], createdAtSortDir), EXCEL_COLUMNS, `고객목록_${todayStr()}.xlsx`);
     } catch (e) {
       alert("엑셀 다운로드에 실패했습니다.");
     } finally {
@@ -73,6 +91,7 @@ export default function ClientsPanel() {
   const [composing, setComposing] = useState(false);
 
   function handleNameChange(value) {
+    // 한글 조합(IME) 중에는 필터링하지 않고 그대로 반영 (조합이 끊기는 것 방지)
     if (composing) {
       setForm({ ...form, name: value });
       return;
@@ -118,6 +137,7 @@ export default function ClientsPanel() {
   function openAddForm() {
     setForm(emptyForm);
     setEditingId(null);
+    setEditingHasSsn(false);
     setShowForm(true);
   }
 
@@ -131,8 +151,10 @@ export default function ClientsPanel() {
       transaction_type: c.transaction_type || "",
       budget_range: c.budget_range || "",
       desired_move_in_month: c.desired_move_in_month || "",
+      ssn: "", // 보안상 기존 주민번호는 수정폼에 절대 채워넣지 않음. 비워두면 기존 값 유지.
     });
     setEditingId(c.id);
+    setEditingHasSsn(!!c.ssn_masked);
     setShowForm(true);
   }
 
@@ -167,31 +189,42 @@ export default function ClientsPanel() {
       </form>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-        <table className="w-full text-xs min-w-[900px]">
+        <table className="w-full text-xs min-w-[1080px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">이름</th>
               <th className="px-4 py-3 font-medium">연락처</th>
+              <th className="px-4 py-3 font-medium">주민번호</th>
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">예산범위</th>
               <th className="px-4 py-3 font-medium">희망입주월</th>
               <th className="px-4 py-3 font-medium">고객설명</th>
               <th className="px-4 py-3 font-medium">주소</th>
+              <th className="px-4 py-3 font-medium">
+                <button
+                  onClick={toggleCreatedAtSort}
+                  className="flex items-center gap-1 hover:text-slate-700"
+                >
+                  등록일 <span className="text-slate-400">{createdAtSortDir === "desc" ? "▼" : "▲"}</span>
+                </button>
+              </th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && clients.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">등록된 고객이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && clients.length === 0 && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 고객이 없습니다.</td></tr>}
             {clients.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
                 <td className="px-4 py-3 text-slate-600">{c.phone || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{c.ssn_masked || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.transaction_type || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.budget_range || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.desired_move_in_month || "-"}</td>
                 <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{c.description || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.address || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{c.created_at ? String(c.created_at).slice(0, 10) : "-"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openEditForm(c)} className="text-violet-400 hover:text-violet-600 text-xs mr-3">수정</button>
                   <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600 text-xs">삭제</button>
@@ -222,6 +255,16 @@ export default function ClientsPanel() {
                 value={form.phone}
                 onChange={(v) => setForm({ ...form, phone: v })}
                 placeholder="연락처"
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              />
+
+              <label className="text-slate-400 col-span-2 -mb-1">
+                주민번호 {editingHasSsn && <span className="text-slate-300">(변경 시에만 입력, 비워두면 기존 값 유지)</span>}
+              </label>
+              <SsnInput
+                value={form.ssn}
+                onChange={(v) => setForm({ ...form, ssn: v })}
+                placeholder={editingHasSsn ? "등록된 주민번호가 있어요 (변경 시에만 입력)" : "990101-1234567"}
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
 

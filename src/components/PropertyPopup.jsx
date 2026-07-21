@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import PhoneInput from "./PhoneInput.jsx";
+import SsnInput from "./SsnInput.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
@@ -21,7 +22,10 @@ function EokManInput({ value, onChange }) {
   const eok = raw ? Math.floor(raw / EOK) : "";
   const man = raw ? Math.floor((raw % EOK) / MAN) : "";
   function update(eokVal, manVal) {
-    const total = (parseInt(eokVal, 10) || 0) * EOK + (parseInt(manVal, 10) || 0) * MAN;
+    const eokInt = parseInt(eokVal, 10) || 0;
+    let manInt = parseInt(manVal, 10) || 0;
+    if (manInt > 9999) manInt = 9999;
+    const total = eokInt * EOK + manInt * MAN;
     onChange(total ? String(total) : "");
   }
   return (
@@ -29,7 +33,7 @@ function EokManInput({ value, onChange }) {
       <input type="number" min="0" step="1" value={eok} onChange={(e) => update(e.target.value, man)}
         className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
       <span className="text-slate-400 shrink-0">억</span>
-      <input type="number" min="0" step="1" value={man} onChange={(e) => update(eok, e.target.value)}
+      <input type="number" min="0" max="9999" step="1" value={man} onChange={(e) => update(eok, e.target.value)}
         className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
       <span className="text-slate-400 shrink-0">만원</span>
     </div>
@@ -43,10 +47,32 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [agencies, setAgencies] = useState([]);
 
+  const [ssnRevealed, setSsnRevealed] = useState(null);
+  const [ssnLoading, setSsnLoading] = useState(false);
+  const [ssnError, setSsnError] = useState("");
+
+  async function handleRevealSsn() {
+    if (ssnRevealed) {
+      setSsnRevealed(null);
+      return;
+    }
+    setSsnLoading(true);
+    setSsnError("");
+    const res = await fetch(`/api/properties/${propertyId}/ssn`);
+    setSsnLoading(false);
+    if (res.ok) {
+      const d = await res.json();
+      setSsnRevealed(d.ssn);
+    } else {
+      const d = await res.json();
+      setSsnError(d.error || "불러오지 못했습니다.");
+    }
+  }
+
   useEffect(() => {
     fetch(`/api/properties/${propertyId}`).then((r) => r.json()).then((d) => {
       setData(d);
-      setForm(d);
+      setForm({ ...d, owner_ssn: "" });
     });
     fetch("/api/partner-agencies").then((r) => r.json()).then((d) => setAgencies(Array.isArray(d) ? d : []));
   }, [propertyId]);
@@ -63,6 +89,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
       const updated = await res.json();
       setData((prev) => ({ ...prev, ...updated }));
       setEditing(false);
+      setSsnRevealed(null);
       onSaved && onSaved(updated);
     } else {
       const err = await res.json();
@@ -97,6 +124,26 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <Row label="평형" value={data.unit_type} />
                 <Row label="사용유형" value={data.usage_type} />
                 <Row label="매도자/임대인" value={[data.owner_name, data.owner_phone].filter(Boolean).join(" · ")} />
+                <div className="flex gap-2 items-start">
+                  <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">주민번호</span>
+                  <div className="flex-1">
+                    {data.owner_ssn_masked ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-700 font-mono">{ssnRevealed || data.owner_ssn_masked}</span>
+                        <button
+                          onClick={handleRevealSsn}
+                          disabled={ssnLoading}
+                          className="text-[11px] text-violet-500 hover:text-violet-600 border border-violet-200 rounded-full px-2 py-0.5 disabled:opacity-50"
+                        >
+                          {ssnLoading ? "불러오는 중..." : ssnRevealed ? "숨기기" : "주민번호 보기"}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-700">-</span>
+                    )}
+                    {ssnError && <p className="text-red-400 mt-1">{ssnError}</p>}
+                  </div>
+                </div>
                 <Row label="물건지부동산" value={data.partner_agency_name ? `공동 · ${data.partner_agency_name}` : "단독"} />
 
                 {hasFinal ? (
@@ -172,6 +219,16 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                   />
                 </div>
 
+                <label className="text-slate-400 -mb-1">
+                  매도자(임대인) 주민번호 {data.owner_ssn_masked && <span className="text-slate-300">(변경 시에만 입력, 비워두면 기존 값 유지)</span>}
+                </label>
+                <SsnInput
+                  value={form.owner_ssn}
+                  onChange={(v) => setForm({ ...form, owner_ssn: v })}
+                  placeholder={data.owner_ssn_masked ? "등록된 주민번호가 있어요 (변경 시에만 입력)" : "990101-1234567"}
+                  className="border border-slate-200 rounded-lg h-9 px-3"
+                />
+
                 <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">
                   <option value="">거래유형 선택</option>
@@ -201,7 +258,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <textarea value={form.memo || ""} onChange={(e) => setForm({ ...form, memo: e.target.value })}
                   placeholder="비고" className="border border-slate-200 rounded-lg p-3 h-16" />
                 <div className="flex justify-end gap-2 mt-2">
-                  <button onClick={() => { setEditing(false); setForm(data); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
+                  <button onClick={() => { setEditing(false); setForm({ ...data, owner_ssn: "" }); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
                   <button onClick={handleSave} disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
                     {saving ? "저장 중..." : "저장"}
                   </button>
@@ -217,8 +274,8 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
 
 function Row({ label, value, multiline }) {
   return (
-    <div className="flex gap-2">
-      <span className="text-slate-400 w-16 shrink-0">{label}</span>
+    <div className="flex gap-2 items-start">
+      <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">{label}</span>
       <span className={`text-slate-700 ${multiline ? "whitespace-pre-wrap" : ""}`}>{value || "-"}</span>
     </div>
   );

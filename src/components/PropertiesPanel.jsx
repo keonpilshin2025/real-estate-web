@@ -3,6 +3,7 @@ import { exportToExcel, todayStr } from "../lib/excelExport.js";
 import AddressField from "./AddressField.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
 import PhoneInput from "./PhoneInput.jsx";
+import SsnInput from "./SsnInput.jsx";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
 const PROPERTY_TYPES = ["아파트", "빌라", "상가"];
@@ -26,7 +27,10 @@ function EokManInput({ value, onChange }) {
   const eok = raw ? Math.floor(raw / EOK) : "";
   const man = raw ? Math.floor((raw % EOK) / MAN) : "";
   function update(eokVal, manVal) {
-    const total = (parseInt(eokVal, 10) || 0) * EOK + (parseInt(manVal, 10) || 0) * MAN;
+    const eokInt = parseInt(eokVal, 10) || 0;
+    let manInt = parseInt(manVal, 10) || 0;
+    if (manInt > 9999) manInt = 9999;
+    const total = eokInt * EOK + manInt * MAN;
     onChange(total ? String(total) : "");
   }
   return (
@@ -34,17 +38,22 @@ function EokManInput({ value, onChange }) {
       <input type="number" min="0" step="1" value={eok} onChange={(e) => update(e.target.value, man)}
         className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
       <span className="text-slate-400 shrink-0">억</span>
-      <input type="number" min="0" step="1" value={man} onChange={(e) => update(eok, e.target.value)}
+      <input type="number" min="0" max="9999" step="1" value={man} onChange={(e) => update(eok, e.target.value)}
         className="border border-slate-200 rounded-lg h-9 px-2 w-full text-right" placeholder="0" />
       <span className="text-slate-400 shrink-0">만원</span>
     </div>
   );
 }
 
+// 동 값 끝에 붙은 "동" 글자 제거 (예: "316동" -> "316")
+function stripDongSuffix(dong) {
+  return dong ? dong.replace(/동$/, "") : dong;
+}
+
 const EXCEL_COLUMNS = [
   { key: "property_type", label: "구분" },
   { key: "property_name", label: "매물명" },
-  { key: "dong", label: "동" },
+  { key: "dong", label: "동", format: (v) => stripDongSuffix(v) || "-" },
   { key: "ho", label: "호수" },
   { key: "unit_type", label: "평형" },
   { key: "transaction_type", label: "거래유형" },
@@ -58,6 +67,7 @@ const EXCEL_COLUMNS = [
   },
   { key: "owner_name", label: "매도자/임대인 성명" },
   { key: "owner_phone", label: "매도자/임대인 연락처" },
+  { key: "owner_ssn_masked", label: "매도자/임대인 주민번호", format: (v) => v || "-" },
   { key: "partner_agency_name", label: "중개유형", format: (v) => (v ? `공동 · ${v}` : "단독") },
   { key: "address", label: "주소" },
   { key: "features", label: "특장점" },
@@ -80,6 +90,7 @@ const emptyForm = {
   asking_monthly_rent: "",
   owner_name: "",
   owner_phone: "",
+  owner_ssn: "",
   partner_agency_id: "",
 };
 
@@ -93,6 +104,7 @@ export default function PropertiesPanel() {
   const [q, setQ] = useState("");
   const [exporting, setExporting] = useState(false);
   const [openDetailId, setOpenDetailId] = useState(null);
+  const [editingHasOwnerSsn, setEditingHasOwnerSsn] = useState(false);
 
   const [presets, setPresets] = useState({}); // { 센트럴타운: { address, dongs: {...} } }
   const [isOtherName, setIsOtherName] = useState(false);
@@ -202,6 +214,7 @@ export default function PropertiesPanel() {
     setForm(emptyForm);
     setIsOtherName(false);
     setEditingId(null);
+    setEditingHasOwnerSsn(false);
     setShowForm(true);
   }
 
@@ -222,9 +235,11 @@ export default function PropertiesPanel() {
       asking_monthly_rent: p.asking_monthly_rent || "",
       owner_name: p.owner_name || "",
       owner_phone: p.owner_phone || "",
+      owner_ssn: "", // 보안상 기존 주민번호는 수정폼에 절대 채워넣지 않음. 비워두면 기존 값 유지.
       partner_agency_id: p.partner_agency_id || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
+    setEditingHasOwnerSsn(!!p.owner_ssn_masked);
     setEditingId(p.id);
     setShowForm(true);
   }
@@ -287,7 +302,7 @@ export default function PropertiesPanel() {
                     {p.property_name}
                   </button>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{p.dong || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{stripDongSuffix(p.dong) || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.ho || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.unit_type || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.transaction_type || "-"}</td>
@@ -394,6 +409,16 @@ export default function PropertiesPanel() {
                 onChange={(v) => setForm({ ...form, owner_phone: v })}
                 placeholder="연락처"
                 className="border border-slate-200 rounded-lg h-9 px-3"
+              />
+
+              <label className="text-slate-400 col-span-2 -mb-1">
+                매도자(임대인) 주민번호 {editingHasOwnerSsn && <span className="text-slate-300">(변경 시에만 입력, 비워두면 기존 값 유지)</span>}
+              </label>
+              <SsnInput
+                value={form.owner_ssn}
+                onChange={(v) => setForm({ ...form, owner_ssn: v })}
+                placeholder={editingHasOwnerSsn ? "등록된 주민번호가 있어요 (변경 시에만 입력)" : "990101-1234567"}
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
 
               <label className="text-slate-400 col-span-2 -mb-1">거래유형 / 희망가</label>

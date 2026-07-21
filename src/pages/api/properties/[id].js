@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getDb } from "../../../lib/db.js";
+import { encryptText, decryptToMasked } from "../../../lib/crypto.js";
 
 export const prerender = false;
 
@@ -33,7 +34,11 @@ export async function GET({ params }) {
   if (!row) {
     return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
-  return new Response(JSON.stringify(row), {
+
+  const { owner_ssn_encrypted, ...rest } = row;
+  const owner_ssn_masked = owner_ssn_encrypted ? await decryptToMasked(owner_ssn_encrypted, env) : null;
+
+  return new Response(JSON.stringify({ ...rest, owner_ssn_masked }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -48,39 +53,53 @@ export async function PUT({ request, params }) {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-    owner_name, owner_phone, partner_agency_id,
+    owner_name, owner_phone, owner_ssn, partner_agency_id,
   } = body;
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
 
-  const [row] = await sql`
-    UPDATE properties SET
-      property_name = ${property_name},
-      property_type = ${property_type},
-      dong = ${dong || null},
-      ho = ${ho || null},
-      address = ${address || null},
-      unit_type = ${unit_type || null},
-      usage_type = ${usage_type || null},
-      features = ${features || null},
-      memo = ${memo || null},
-      transaction_type = ${transaction_type || null},
-      asking_price = ${toInt(asking_price)},
-      asking_deposit = ${toInt(asking_deposit)},
-      asking_monthly_rent = ${toInt(asking_monthly_rent)},
-      owner_name = ${owner_name || null},
-      owner_phone = ${owner_phone || null},
-      partner_agency_id = ${toInt(partner_agency_id)},
-      updated_at = now()
-    WHERE id = ${id}
-    RETURNING *
-  `;
+  // owner_ssn이 비어있으면(수정 안 함) 기존 값 유지, 값이 있으면 새로 암호화해서 교체
+  const [row] = owner_ssn
+    ? await sql`
+        UPDATE properties SET
+          property_name = ${property_name}, property_type = ${property_type},
+          dong = ${dong || null}, ho = ${ho || null}, address = ${address || null},
+          unit_type = ${unit_type || null}, usage_type = ${usage_type || null},
+          features = ${features || null}, memo = ${memo || null},
+          transaction_type = ${transaction_type || null},
+          asking_price = ${toInt(asking_price)}, asking_deposit = ${toInt(asking_deposit)},
+          asking_monthly_rent = ${toInt(asking_monthly_rent)},
+          owner_name = ${owner_name || null}, owner_phone = ${owner_phone || null},
+          owner_ssn_encrypted = ${await encryptText(owner_ssn, env)},
+          partner_agency_id = ${toInt(partner_agency_id)},
+          updated_at = now()
+        WHERE id = ${id}
+        RETURNING *
+      `
+    : await sql`
+        UPDATE properties SET
+          property_name = ${property_name}, property_type = ${property_type},
+          dong = ${dong || null}, ho = ${ho || null}, address = ${address || null},
+          unit_type = ${unit_type || null}, usage_type = ${usage_type || null},
+          features = ${features || null}, memo = ${memo || null},
+          transaction_type = ${transaction_type || null},
+          asking_price = ${toInt(asking_price)}, asking_deposit = ${toInt(asking_deposit)},
+          asking_monthly_rent = ${toInt(asking_monthly_rent)},
+          owner_name = ${owner_name || null}, owner_phone = ${owner_phone || null},
+          partner_agency_id = ${toInt(partner_agency_id)},
+          updated_at = now()
+        WHERE id = ${id}
+        RETURNING *
+      `;
 
   if (!row) {
     return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
 
-  return new Response(JSON.stringify(row), {
+  const { owner_ssn_encrypted, ...rest } = row;
+  const owner_ssn_masked = owner_ssn_encrypted ? await decryptToMasked(owner_ssn_encrypted, env) : null;
+
+  return new Response(JSON.stringify({ ...rest, owner_ssn_masked }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
