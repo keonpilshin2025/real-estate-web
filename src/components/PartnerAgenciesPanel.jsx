@@ -13,7 +13,6 @@ const EXCEL_COLUMNS = [
   { key: "address", label: "주소" },
 ];
 
-// 부동산명 가나다순 정렬
 function sortByAgencyName(list) {
   return [...list].sort((a, b) => (a.agency_name || "").localeCompare(b.agency_name || "", "ko"));
 }
@@ -108,25 +107,24 @@ export default function PartnerAgenciesPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-2 items-center">
+      <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap gap-2 items-center">
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="부동산명 검색"
-          className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1"
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
-        <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
-        <div className="flex-1" />
+        <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
         <button
           type="button"
           onClick={handleExportExcel}
           disabled={exporting}
-          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 whitespace-nowrap shrink-0"
         >
           {exporting ? "다운로드 중..." : "엑셀 다운로드"}
         </button>
-        <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800">
+        <button type="button" onClick={openAddForm} className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800 whitespace-nowrap shrink-0">
           + 부동산 등록
         </button>
       </form>

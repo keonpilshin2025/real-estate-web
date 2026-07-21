@@ -114,7 +114,7 @@ export default function ChangePasswordButton() {
     <>
       <button
         onClick={() => { setOpen(true); reset(); }}
-        className="text-xs text-slate-500 border border-slate-200 rounded-full px-3 py-1.5 hover:bg-slate-100 transition"
+        className="text-[10px] sm:text-xs text-slate-500 border border-slate-200 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 hover:bg-slate-100 transition whitespace-nowrap shrink-0"
       >
         비밀번호 변경
       </button>

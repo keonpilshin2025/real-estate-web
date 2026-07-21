@@ -27,6 +27,14 @@ function formatDateTimeStr(v) {
   return String(v).slice(0, 16).replace("T", " ");
 }
 
+// 동/호수 표기: 동이 있으면 "동/호수", 동이 없으면 "/호수"
+function formatDongHo(dong, ho) {
+  if (dong && ho) return `${dong}/${ho}`;
+  if (dong) return dong;
+  if (ho) return `/${ho}`;
+  return "-";
+}
+
 // 잔금일시 오름차순 정렬 (빠른 날짜가 먼저, 날짜 없는 계약은 맨 뒤로)
 function sortByBalanceDate(list) {
   return [...list].sort((a, b) => {
@@ -403,24 +411,24 @@ export default function ContractMapping() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <button
           onClick={handleExportExcel}
           disabled={exporting}
-          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 whitespace-nowrap shrink-0"
         >
           {exporting ? "다운로드 중..." : "엑셀 다운로드"}
         </button>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800"
+          className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800 whitespace-nowrap shrink-0"
         >
           + 계약 등록
         </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-        <table className="w-full text-xs min-w-[720px]">
+        <table className="w-full text-xs min-w-[900px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">구분</th>
@@ -460,7 +468,7 @@ export default function ContractMapping() {
                     {c.property_name}
                   </button>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{[c.property_dong, c.property_ho].filter(Boolean).join(" ") || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{formatDongHo(c.property_dong, c.property_ho)}</td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => setOpenClientId(c.client_id)}

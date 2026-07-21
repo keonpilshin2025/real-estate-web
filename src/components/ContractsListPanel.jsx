@@ -39,14 +39,11 @@ function isBuyerSide(role) {
   return role === "매수인" || role === "임차인";
 }
 
-// 매도(임대)인 표시명: 계약에 매도/임대 역할로 직접 등록된 고객이 있으면 그걸 우선,
-// 없으면 매물 등록 시 입력해둔 매도자/임대인 정보를 사용
 function sellerDisplayName(c) {
   if (isSellerSide(c.client_role)) return c.client_name;
   return c.property_owner_name || null;
 }
 
-// 잔금일이 지났으면 자동으로 "완료"로 간주 (수동으로 미리 완료 처리한 것도 그대로 유지)
 function computeDealStatus(status, balanceDate) {
   if (status === "완료") return "완료";
   if (balanceDate) {
@@ -65,7 +62,6 @@ function DealStatusBadge({ status, balanceDate }) {
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cls}`}>{s}</span>;
 }
 
-// 잔금일시 오름차순 정렬 (빠른 날짜가 먼저, 날짜 없는 계약은 맨 뒤로)
 function sortByBalanceDate(list) {
   return [...list].sort((a, b) => {
     if (!a.balance_date && !b.balance_date) return 0;
@@ -134,21 +130,20 @@ export default function ContractsListPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-2 items-center">
+      <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap gap-2 items-center">
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="매물명/고객명 검색"
-          className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1"
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
-        <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500">검색</button>
-        <div className="flex-1" />
+        <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
         <button
           type="button"
           onClick={handleExportExcel}
           disabled={exporting}
-          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+          className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 whitespace-nowrap shrink-0"
         >
           {exporting ? "다운로드 중..." : "엑셀 다운로드"}
         </button>
