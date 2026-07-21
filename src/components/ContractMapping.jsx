@@ -28,9 +28,15 @@ function formatDateTimeStr(v) {
 }
 
 // 동/호수 표기: 동이 있으면 "동/호수", 동이 없으면 "/호수"
+// 동 값 끝에 붙은 "동" 글자 제거 (예: "316동" -> "316")
+function stripDongSuffix(dong) {
+  return dong ? dong.replace(/동$/, "") : dong;
+}
+
 function formatDongHo(dong, ho) {
-  if (dong && ho) return `${dong}/${ho}`;
-  if (dong) return dong;
+  const d = stripDongSuffix(dong);
+  if (d && ho) return `${d}/${ho}`;
+  if (d) return d;
   if (ho) return `/${ho}`;
   return "-";
 }
@@ -50,7 +56,7 @@ const EXCEL_COLUMNS = [
   { key: "brokerage_type", label: "중개유형" },
   { key: "partner_agency_name", label: "물건지부동산", format: (v) => v || "-" },
   { key: "property_name", label: "매물명" },
-  { key: "property_dong", label: "동" },
+  { key: "property_dong", label: "동", format: (v) => stripDongSuffix(v) || "-" },
   { key: "property_ho", label: "호수" },
   { key: "client_name", label: "고객명" },
   { key: "client_phone", label: "연락처" },
@@ -77,7 +83,8 @@ function EokManInput({ value, onChange, readOnly }) {
 
   function update(eokVal, manVal) {
     const eokInt = parseInt(eokVal, 10) || 0;
-    const manInt = parseInt(manVal, 10) || 0;
+    let manInt = parseInt(manVal, 10) || 0;
+    if (manInt > 9999) manInt = 9999; // 만원 칸은 억 단위로 안 넘어가게 방지 (예: 5000 뒤에 0 실수로 더 눌러도 16억 안 됨)
     const total = eokInt * EOK + manInt * MAN;
     onChange(total ? String(total) : "");
   }
@@ -92,7 +99,7 @@ function EokManInput({ value, onChange, readOnly }) {
         onChange={(e) => update(e.target.value, man)}
         className={`border border-slate-200 rounded-lg h-9 px-2 w-full text-right ${cls}`} placeholder="0" />
       <span className="text-slate-400 shrink-0">억</span>
-      <input type="number" min="0" step="1" readOnly={readOnly} value={man}
+      <input type="number" min="0" max="9999" step="1" readOnly={readOnly} value={man}
         onChange={(e) => update(eok, e.target.value)}
         className={`border border-slate-200 rounded-lg h-9 px-2 w-full text-right ${cls}`} placeholder="0" />
       <span className="text-slate-400 shrink-0">만원</span>
@@ -170,6 +177,7 @@ export default function ContractMapping() {
 
   const [agencies, setAgencies] = useState([]);
   const [moveInTouched, setMoveInTouched] = useState(false);
+  const [downPaymentTouched, setDownPaymentTouched] = useState(false);
 
   async function fetchContracts() {
     setLoading(true);
@@ -304,6 +312,10 @@ export default function ContractMapping() {
         monthly_rent: p.transaction_type === "월세" ? (p.asking_monthly_rent ? String(p.asking_monthly_rent) : prev.monthly_rent) : prev.monthly_rent,
         partner_agency_id: p.partner_agency_id || prev.partner_agency_id || "",
       };
+      if (!downPaymentTouched) {
+        const base = Number((next.contract_type === "월세" ? next.deposit : next.price) || 0);
+        next.down_payment = base ? String(Math.round((base * 0.1) / 10000) * 10000) : next.down_payment;
+      }
       return recalcBalance(next);
     });
     setPropResults([]);
@@ -323,12 +335,10 @@ export default function ContractMapping() {
   function updateField(field, value) {
     setForm((prev) => {
       let next = { ...prev, [field]: value };
-      // 매매대금/보증금 입력 시, 계약금이 비어있으면 10%로 자동 선처리 (직접 수정 가능)
-      if ((field === "price" || field === "deposit") && !prev.down_payment) {
+      // 매매대금/보증금이 바뀔 때마다 계약금을 10%로 자동 갱신 (사용자가 계약금을 직접 건드리기 전까지)
+      if ((field === "price" || field === "deposit") && !downPaymentTouched) {
         const base = Number(value || 0);
-        if (base) {
-          next.down_payment = String(Math.round((base * 0.1) / 10000) * 10000);
-        }
+        next.down_payment = base ? String(Math.round((base * 0.1) / 10000) * 10000) : "";
       }
       return recalcBalance(next);
     });
@@ -405,6 +415,7 @@ export default function ContractMapping() {
     setBlockingRows([]);
     setWarningRows([]);
     setMoveInTouched(false);
+    setDownPaymentTouched(false);
   }
 
   const brokerageType = form.partner_agency_id ? "공동" : "단독";
@@ -428,23 +439,24 @@ export default function ContractMapping() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-        <table className="w-full text-xs min-w-[900px]">
+        <table className="w-full text-xs min-w-[960px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
-              <th className="px-4 py-3 font-medium">구분</th>
+              <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">중개유형</th>
               <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동/호수</th>
               <th className="px-4 py-3 font-medium">고객명</th>
               <th className="px-4 py-3 font-medium">역할</th>
+              <th className="px-4 py-3 font-medium">잔금</th>
               <th className="px-4 py-3 font-medium">잔금일시</th>
               <th className="px-4 py-3 font-medium">계약만료일</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && contracts.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 계약이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && contracts.length === 0 && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 계약이 없습니다.</td></tr>}
             {contracts.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{c.contract_type}</td>
@@ -483,6 +495,9 @@ export default function ContractMapping() {
                   }`}>
                     {c.client_role}
                   </span>
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {c.balance_amount ? formatEokMan(c.balance_amount) : "-"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {c.balance_date ? String(c.balance_date).slice(0, 16).replace("T", " ") : "-"}
@@ -684,8 +699,8 @@ export default function ContractMapping() {
                   <label className="text-slate-400 col-span-2 -mb-1">계약일시</label>
                   <DateTime10Input value={form.contract_date} onChange={(v) => setForm({ ...form, contract_date: v })} />
 
-                  <label className="text-slate-400 col-span-2 -mb-1">계약금</label>
-                  <EokManInput value={form.down_payment} onChange={(v) => updateField("down_payment", v)} />
+                  <label className="text-slate-400 col-span-2 -mb-1">계약금 (매매대금/보증금의 10% 자동입력, 직접 수정 가능)</label>
+                  <EokManInput value={form.down_payment} onChange={(v) => { setDownPaymentTouched(true); updateField("down_payment", v); }} />
 
                   <label className="text-slate-400 col-span-2 -mb-1">잔금일시</label>
                   <DateTime10Input value={form.balance_date} onChange={handleBalanceDateChange} />

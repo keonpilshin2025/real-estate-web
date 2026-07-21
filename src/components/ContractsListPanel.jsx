@@ -88,6 +88,7 @@ function sortByStatusThenBalanceDate(list) {
 
 const EXCEL_COLUMNS = [
   { key: "property_name", label: "매물명" },
+  { key: "contract_type", label: "거래유형" },
   { key: "property_dong", label: "동/호수", format: (_v, row) => formatDongHo(row.property_dong, row.property_ho) },
   { key: "brokerage_type", label: "중개유형" },
   { key: "partner_agency_name", label: "물건지부동산", format: (v) => v || "-" },
@@ -165,10 +166,11 @@ export default function ContractsListPanel() {
       </form>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-        <table className="w-full text-xs min-w-[900px]">
+        <table className="w-full text-xs min-w-[980px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">매물명</th>
+              <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">동/호수</th>
               <th className="px-4 py-3 font-medium">중개유형</th>
               <th className="px-4 py-3 font-medium">매도(임대)인</th>
@@ -181,10 +183,10 @@ export default function ContractsListPanel() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>
+              <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>
             )}
             {!loading && contracts.length === 0 && (
-              <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 계약이 없습니다.</td></tr>
+              <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 계약이 없습니다.</td></tr>
             )}
             {contracts.map((c) => {
               const sellerName = sellerDisplayName(c);
@@ -199,6 +201,7 @@ export default function ContractsListPanel() {
                       {c.property_name}
                     </button>
                   </td>
+                  <td className="px-4 py-3 text-slate-600">{c.contract_type}</td>
                   <td className="px-4 py-3 text-slate-600">{formatDongHo(c.property_dong, c.property_ho)}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {c.brokerage_type === "공동" ? (
