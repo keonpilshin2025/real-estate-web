@@ -44,6 +44,21 @@ export async function PUT({ request, params }) {
   const partnerAgencyIdInt = toInt(partner_agency_id);
   const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
 
+  // 매도(임대)인 주소 스냅샷 재계산 (수정 시점 기준으로 다시 고정)
+  const isSeller = client_role === "매도인" || client_role === "임대인";
+  let sellerAddressSnapshot = null;
+  if (isSeller) {
+    const [c] = await sql`SELECT address FROM clients WHERE id = ${client_id}`;
+    sellerAddressSnapshot = c?.address || null;
+  } else {
+    const [p] = await sql`
+      SELECT oc.address FROM properties p
+      LEFT JOIN clients oc ON oc.id = p.owner_client_id
+      WHERE p.id = ${property_id}
+    `;
+    sellerAddressSnapshot = p?.address || null;
+  }
+
   try {
     const [row] = await sql`
       UPDATE contracts SET
@@ -63,6 +78,7 @@ export async function PUT({ request, params }) {
         partner_agency_id = ${partnerAgencyIdInt},
         brokerage_type = ${brokerageType},
         deal_status = ${deal_status || "진행"},
+        seller_address_snapshot = ${sellerAddressSnapshot},
         updated_at = now()
       WHERE id = ${id}
       RETURNING *

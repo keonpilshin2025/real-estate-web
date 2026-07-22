@@ -3,6 +3,7 @@ import { exportToExcel, todayStr } from "../lib/excelExport.js";
 import AddressField from "./AddressField.jsx";
 import PhoneInput from "./PhoneInput.jsx";
 import SsnInput from "./SsnInput.jsx";
+import ClientPopup from "./ClientPopup.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const BUDGET_RANGES = [
@@ -51,6 +52,7 @@ export default function ClientsPanel() {
   const [nameError, setNameError] = useState("");
   const [exporting, setExporting] = useState(false);
   const [editingHasSsn, setEditingHasSsn] = useState(false);
+  const [openClientId, setOpenClientId] = useState(null);
   const [createdAtSortDir, setCreatedAtSortDir] = useState("desc");
 
   async function fetchClients() {
@@ -189,16 +191,14 @@ export default function ClientsPanel() {
       </form>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-        <table className="w-full text-xs min-w-[1080px]">
+        <table className="w-full text-xs min-w-[820px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">이름</th>
               <th className="px-4 py-3 font-medium">연락처</th>
-              <th className="px-4 py-3 font-medium">주민번호</th>
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">예산범위</th>
               <th className="px-4 py-3 font-medium">희망입주월</th>
-              <th className="px-4 py-3 font-medium">고객설명</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium">
                 <button
@@ -212,18 +212,20 @@ export default function ClientsPanel() {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && clients.length === 0 && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 고객이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && clients.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">등록된 고객이 없습니다.</td></tr>}
             {clients.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
+                <td className="px-4 py-3">
+                  <button onClick={() => setOpenClientId(c.id)} className="font-medium text-violet-500 hover:underline">
+                    {c.name}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-slate-600">{c.phone || "-"}</td>
-                <td className="px-4 py-3 text-slate-600">{c.ssn_masked || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.transaction_type || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.budget_range || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.desired_move_in_month || "-"}</td>
-                <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{c.description || "-"}</td>
-                <td className="px-4 py-3 text-slate-600">{c.address || "-"}</td>
+                <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate" title={c.address || ""}>{c.address || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.created_at ? String(c.created_at).slice(0, 10) : "-"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openEditForm(c)} className="text-violet-400 hover:text-violet-600 text-xs mr-3">수정</button>
@@ -234,6 +236,14 @@ export default function ClientsPanel() {
           </tbody>
         </table>
       </div>
+
+      {openClientId && (
+        <ClientPopup
+          clientId={openClientId}
+          onClose={() => setOpenClientId(null)}
+          onSaved={fetchClients}
+        />
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">

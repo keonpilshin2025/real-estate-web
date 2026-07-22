@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
 import AddressField from "./AddressField.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
-import PhoneInput from "./PhoneInput.jsx";
-import SsnInput from "./SsnInput.jsx";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
-const PROPERTY_TYPES = ["아파트", "빌라", "상가"];
+const PROPERTY_TYPES = ["아파트", "빌라", "오피스텔", "상가", "기타"];
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
 const MAN = 10000;
@@ -65,8 +63,8 @@ const EXCEL_COLUMNS = [
         ? `${formatEokMan(row.asking_deposit)} / ${formatEokMan(row.asking_monthly_rent)}`
         : formatEokMan(row.asking_price),
   },
-  { key: "owner_name", label: "매도자/임대인 성명" },
-  { key: "owner_phone", label: "매도자/임대인 연락처" },
+  { key: "owner_client_name", label: "매도자/임대인 성명", format: (v, row) => v || row.owner_name || "-" },
+  { key: "owner_client_phone", label: "매도자/임대인 연락처", format: (v, row) => v || row.owner_phone || "-" },
   { key: "owner_ssn_masked", label: "매도자/임대인 주민번호", format: (v) => v || "-" },
   { key: "partner_agency_name", label: "중개유형", format: (v) => (v ? `공동 · ${v}` : "단독") },
   { key: "address", label: "주소" },
@@ -88,9 +86,7 @@ const emptyForm = {
   asking_price: "",
   asking_deposit: "",
   asking_monthly_rent: "",
-  owner_name: "",
-  owner_phone: "",
-  owner_ssn: "",
+  owner_client_id: "",
   partner_agency_id: "",
 };
 
@@ -104,11 +100,15 @@ export default function PropertiesPanel() {
   const [q, setQ] = useState("");
   const [exporting, setExporting] = useState(false);
   const [openDetailId, setOpenDetailId] = useState(null);
-  const [editingHasOwnerSsn, setEditingHasOwnerSsn] = useState(false);
 
   const [presets, setPresets] = useState({}); // { 센트럴타운: { address, dongs: {...} } }
   const [isOtherName, setIsOtherName] = useState(false);
   const [agencies, setAgencies] = useState([]);
+
+  // 매도자(임대인) 고객 검색
+  const [ownerQuery, setOwnerQuery] = useState("");
+  const [ownerResults, setOwnerResults] = useState([]);
+  const [ownerHighlight, setOwnerHighlight] = useState(0);
 
   async function fetchProperties() {
     setLoading(true);
@@ -129,6 +129,48 @@ export default function PropertiesPanel() {
     const res = await fetch("/api/partner-agencies");
     const data = await res.json();
     setAgencies(Array.isArray(data) ? data : []);
+  }
+
+  async function searchOwners(q) {
+    setOwnerQuery(q);
+    const res = await fetch(`/api/clients?q=${encodeURIComponent(q)}`);
+    setOwnerResults(await res.json());
+    setOwnerHighlight(0);
+  }
+
+  async function handleOwnerFocus() {
+    if (ownerResults.length === 0) {
+      const res = await fetch(`/api/clients?q=${encodeURIComponent(ownerQuery)}`);
+      setOwnerResults(await res.json());
+      setOwnerHighlight(0);
+    }
+  }
+
+  function handleOwnerKeyDown(e) {
+    if (ownerResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOwnerHighlight((i) => Math.min(i + 1, ownerResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setOwnerHighlight((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pickOwner(ownerResults[ownerHighlight]);
+    } else if (e.key === "Escape") {
+      setOwnerResults([]);
+    }
+  }
+
+  function pickOwner(c) {
+    setForm((f) => ({ ...f, owner_client_id: c.id }));
+    setOwnerResults([]);
+    setOwnerQuery(`${c.name} (${c.phone || "연락처 없음"})`);
+  }
+
+  function clearOwner() {
+    setForm((f) => ({ ...f, owner_client_id: "" }));
+    setOwnerQuery("");
   }
 
   useEffect(() => {
@@ -214,7 +256,8 @@ export default function PropertiesPanel() {
     setForm(emptyForm);
     setIsOtherName(false);
     setEditingId(null);
-    setEditingHasOwnerSsn(false);
+    setOwnerQuery("");
+    setOwnerResults([]);
     setShowForm(true);
   }
 
@@ -233,13 +276,16 @@ export default function PropertiesPanel() {
       asking_price: p.asking_price || "",
       asking_deposit: p.asking_deposit || "",
       asking_monthly_rent: p.asking_monthly_rent || "",
-      owner_name: p.owner_name || "",
-      owner_phone: p.owner_phone || "",
-      owner_ssn: "", // 보안상 기존 주민번호는 수정폼에 절대 채워넣지 않음. 비워두면 기존 값 유지.
+      owner_client_id: p.owner_client_id || "",
       partner_agency_id: p.partner_agency_id || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
-    setEditingHasOwnerSsn(!!p.owner_ssn_masked);
+    setOwnerQuery(
+      p.owner_client_id && p.owner_client_name
+        ? `${p.owner_client_name} (${p.owner_client_phone || "연락처 없음"})`
+        : ""
+    );
+    setOwnerResults([]);
     setEditingId(p.id);
     setShowForm(true);
   }
@@ -368,7 +414,11 @@ export default function PropertiesPanel() {
               <select
                 required
                 value={form.property_type}
-                onChange={(e) => setForm({ ...form, property_type: e.target.value, usage_type: e.target.value === "상가" ? form.usage_type : "" })}
+                onChange={(e) => setForm({
+                  ...form,
+                  property_type: e.target.value,
+                  usage_type: (e.target.value === "상가" || e.target.value === "기타") ? form.usage_type : "",
+                })}
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               >
                 <option value="">매물구분 선택 *</option>
@@ -376,12 +426,12 @@ export default function PropertiesPanel() {
               </select>
 
               <input
-                placeholder="사용유형 (상가만 입력)"
-                disabled={form.property_type !== "상가"}
+                placeholder={form.property_type === "기타" ? "매물구분 직접입력 (예: 타운하우스, 단독주택 등)" : "사용유형 (상가만 입력)"}
+                disabled={form.property_type !== "상가" && form.property_type !== "기타"}
                 value={form.usage_type}
                 onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
                 className={`col-span-2 border border-slate-200 rounded-lg h-9 px-3 ${
-                  form.property_type === "상가" ? "bg-white text-slate-800" : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                  (form.property_type === "상가" || form.property_type === "기타") ? "bg-white text-slate-800" : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
               />
 
@@ -393,33 +443,47 @@ export default function PropertiesPanel() {
               >
                 <option value="">없음 (단독중개)</option>
                 {agencies.map((a) => (
-                  <option key={a.id} value={a.id}>{a.agency_name}</option>
+                  <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>
                 ))}
               </select>
 
-              <label className="text-slate-400 col-span-2 -mb-1">매도자(임대인) 정보</label>
-              <input
-                placeholder="매도자(임대인) 성명"
-                value={form.owner_name}
-                onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-                className="border border-slate-200 rounded-lg h-9 px-3"
-              />
-              <PhoneInput
-                value={form.owner_phone}
-                onChange={(v) => setForm({ ...form, owner_phone: v })}
-                placeholder="연락처"
-                className="border border-slate-200 rounded-lg h-9 px-3"
-              />
-
               <label className="text-slate-400 col-span-2 -mb-1">
-                매도자(임대인) 주민번호 {editingHasOwnerSsn && <span className="text-slate-300">(변경 시에만 입력, 비워두면 기존 값 유지)</span>}
+                매도자(임대인) 고객 검색 <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span>
               </label>
-              <SsnInput
-                value={form.owner_ssn}
-                onChange={(v) => setForm({ ...form, owner_ssn: v })}
-                placeholder={editingHasOwnerSsn ? "등록된 주민번호가 있어요 (변경 시에만 입력)" : "990101-1234567"}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              />
+              <div className="col-span-2 relative">
+                <div className="flex gap-2">
+                  <input
+                    placeholder="이름 또는 연락처로 검색, 또는 클릭해서 목록 보기"
+                    value={ownerQuery}
+                    onChange={(e) => searchOwners(e.target.value)}
+                    onFocus={handleOwnerFocus}
+                    onKeyDown={handleOwnerKeyDown}
+                    className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
+                  />
+                  {form.owner_client_id && (
+                    <button type="button" onClick={clearOwner} className="shrink-0 border border-slate-200 rounded-lg h-9 px-3 text-slate-500 hover:bg-slate-50">
+                      선택해제
+                    </button>
+                  )}
+                </div>
+                {ownerResults.length > 0 && (
+                  <div className="absolute z-10 bg-white border border-slate-200 rounded-lg mt-1 w-full max-h-40 overflow-y-auto shadow-sm">
+                    {ownerResults.map((c, i) => (
+                      <div
+                        key={c.id}
+                        onMouseEnter={() => setOwnerHighlight(i)}
+                        onClick={() => pickOwner(c)}
+                        className={`px-3 py-2 cursor-pointer ${i === ownerHighlight ? "bg-violet-100" : "hover:bg-violet-50"}`}
+                      >
+                        {c.name} · {c.phone || "연락처 없음"}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-slate-400 mt-1">
+                  목록에 없으면 먼저 "고객" 탭에서 등록해주세요. 성명/연락처/주민번호는 연결된 고객 정보를 그대로 사용해요.
+                </p>
+              </div>
 
               <label className="text-slate-400 col-span-2 -mb-1">거래유형 / 희망가</label>
               <select

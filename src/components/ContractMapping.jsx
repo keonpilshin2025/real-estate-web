@@ -642,7 +642,7 @@ export default function ContractMapping() {
               >
                 <option value="">없음 (단독중개)</option>
                 {agencies.map((a) => (
-                  <option key={a.id} value={a.id}>{a.agency_name}</option>
+                  <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>
                 ))}
               </select>
 

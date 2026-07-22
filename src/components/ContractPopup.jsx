@@ -36,7 +36,10 @@ function EokManInput({ value, onChange, readOnly }) {
   const eok = raw ? Math.floor(raw / EOK) : "";
   const man = raw ? Math.floor((raw % EOK) / MAN) : "";
   function update(eokVal, manVal) {
-    const total = (parseInt(eokVal, 10) || 0) * EOK + (parseInt(manVal, 10) || 0) * MAN;
+    const eokInt = parseInt(eokVal, 10) || 0;
+    let manInt = parseInt(manVal, 10) || 0;
+    if (manInt > 9999) manInt = 9999;
+    const total = eokInt * EOK + manInt * MAN;
     onChange(total ? String(total) : "");
   }
   const cls = readOnly ? "bg-violet-50 text-violet-600 font-medium" : "bg-white text-slate-800";
@@ -45,7 +48,7 @@ function EokManInput({ value, onChange, readOnly }) {
       <input type="number" min="0" step="1" readOnly={readOnly} value={eok} onChange={(e) => update(e.target.value, man)}
         className={`border border-slate-200 rounded-lg h-9 px-2 w-full text-right ${cls}`} placeholder="0" />
       <span className="text-slate-400 shrink-0">억</span>
-      <input type="number" min="0" step="1" readOnly={readOnly} value={man} onChange={(e) => update(eok, e.target.value)}
+      <input type="number" min="0" max="9999" step="1" readOnly={readOnly} value={man} onChange={(e) => update(eok, e.target.value)}
         className={`border border-slate-200 rounded-lg h-9 px-2 w-full text-right ${cls}`} placeholder="0" />
       <span className="text-slate-400 shrink-0">만원</span>
     </div>
@@ -172,6 +175,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <Row label="매물" value={`${data.property_name} ${data.property_dong || ""} ${data.property_ho || ""}`} />
                 <Row label="고객" value={`${data.client_name} · ${data.client_phone || "-"}`} />
                 <Row label="구분" value={data.client_role} />
+                <Row label="매도(임대)인 주소" value={data.seller_address_snapshot} />
                 <Row label="중개유형" value={data.brokerage_type === "공동" ? `공동 · ${data.partner_agency_name || ""}` : "단독"} />
                 <Row label="거래상태" value={computeDealStatus(data.deal_status, data.balance_date)} />
                 <Row label="계약유형" value={data.contract_type} />
@@ -223,7 +227,7 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <select value={form.partner_agency_id || ""} onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">
                   <option value="">없음 (단독중개)</option>
-                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}</option>)}
+                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>)}
                 </select>
 
                 <select value={form.contract_type} onChange={(e) => handleContractTypeChange(e.target.value)}
@@ -291,8 +295,8 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
 
 function Row({ label, value, multiline }) {
   return (
-    <div className="flex gap-2">
-      <span className="text-slate-400 w-20 shrink-0">{label}</span>
+    <div className="flex gap-2 items-start">
+      <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">{label}</span>
       <span className={`text-slate-700 ${multiline ? "whitespace-pre-wrap" : ""}`}>{value || "-"}</span>
     </div>
   );

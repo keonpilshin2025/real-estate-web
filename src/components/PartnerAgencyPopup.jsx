@@ -83,8 +83,8 @@ export default function PartnerAgencyPopup({ agencyId, onClose, onSaved }) {
 
 function Row({ label, value }) {
   return (
-    <div className="flex gap-2">
-      <span className="text-slate-400 w-20 shrink-0">{label}</span>
+    <div className="flex gap-2 items-start">
+      <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">{label}</span>
       <span className="text-slate-700">{value || "-"}</span>
     </div>
   );

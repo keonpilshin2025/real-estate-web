@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getDb } from "../../../lib/db.js";
-import { encryptText, decryptToMasked } from "../../../lib/crypto.js";
+import { decryptToMasked } from "../../../lib/crypto.js";
 
 export const prerender = false;
 
@@ -14,9 +14,14 @@ export async function GET({ request }) {
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 10000) : 20;
 
   const rows = await sql`
-    SELECT p.*, pa.agency_name AS partner_agency_name
+    SELECT
+      p.*,
+      pa.agency_name AS partner_agency_name,
+      oc.name AS owner_client_name,
+      oc.phone AS owner_client_phone
     FROM properties p
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
+    LEFT JOIN clients oc ON oc.id = p.owner_client_id
     WHERE
       (${type} = '' OR p.property_type = ${type})
       AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.address ILIKE ${'%' + q + '%'})
@@ -24,6 +29,7 @@ export async function GET({ request }) {
     LIMIT ${limit}
   `;
 
+  // 과거 데이터(고객 연동 전 직접입력분)를 위한 매도자 주민번호 마스킹은 그대로 유지
   const withMasked = await Promise.all(
     rows.map(async (row) => {
       const { owner_ssn_encrypted, ...rest } = row;
@@ -47,7 +53,7 @@ export async function POST({ request }) {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-    owner_name, owner_phone, owner_ssn, partner_agency_id,
+    owner_client_id, partner_agency_id,
   } = body;
 
   if (!property_name || !property_type) {
@@ -55,18 +61,17 @@ export async function POST({ request }) {
   }
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
-  const ownerSsnEncrypted = owner_ssn ? await encryptText(owner_ssn, env) : null;
 
   const [row] = await sql`
     INSERT INTO properties
       (property_name, property_type, dong, ho, address, unit_type, usage_type, features, memo,
        transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-       owner_name, owner_phone, owner_ssn_encrypted, partner_agency_id)
+       owner_client_id, partner_agency_id)
     VALUES
       (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${address || null},
        ${unit_type || null}, ${usage_type || null}, ${features || null}, ${memo || null},
        ${transaction_type || null}, ${toInt(asking_price)}, ${toInt(asking_deposit)}, ${toInt(asking_monthly_rent)},
-       ${owner_name || null}, ${owner_phone || null}, ${ownerSsnEncrypted}, ${toInt(partner_agency_id)})
+       ${toInt(owner_client_id)}, ${toInt(partner_agency_id)})
     RETURNING *
   `;
 

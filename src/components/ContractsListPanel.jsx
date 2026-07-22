@@ -47,7 +47,14 @@ function isBuyerSide(role) {
 
 function sellerDisplayName(c) {
   if (isSellerSide(c.client_role)) return c.client_name;
-  return c.property_owner_name || null;
+  return c.property_owner_client_name || c.property_owner_name || null;
+}
+
+// 매도(임대)인 클릭 시 열어줄 고객 id: 계약에 직접 매도/임대 역할로 등록됐으면 그 고객,
+// 아니면 매물에 연동된 고객(owner_client_id)을 사용
+function sellerClientId(c) {
+  if (isSellerSide(c.client_role)) return c.client_id;
+  return c.property_owner_client_id || null;
 }
 
 function computeDealStatus(status, balanceDate) {
@@ -190,7 +197,7 @@ export default function ContractsListPanel() {
             )}
             {contracts.map((c) => {
               const sellerName = sellerDisplayName(c);
-              const sellerIsClient = isSellerSide(c.client_role);
+              const sellerClId = sellerClientId(c);
               return (
                 <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-4 py-3">
@@ -218,9 +225,9 @@ export default function ContractsListPanel() {
                   <td className="px-4 py-3">
                     {sellerName ? (
                       <button
-                        onClick={() => (sellerIsClient ? setOpenClientId(c.client_id) : setOpenPropertyId(c.property_id))}
+                        onClick={() => (sellerClId ? setOpenClientId(sellerClId) : setOpenPropertyId(c.property_id))}
                         className="font-medium text-violet-500 hover:underline"
-                        title={sellerIsClient ? "고객 정보 보기" : "매물에 등록된 매도자/임대인 정보 보기"}
+                        title={sellerClId ? "고객 정보 보기" : "매물에 등록된 매도자/임대인 정보 보기"}
                       >
                         {sellerName}
                       </button>

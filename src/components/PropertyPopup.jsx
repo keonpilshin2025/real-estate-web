@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import PhoneInput from "./PhoneInput.jsx";
-import SsnInput from "./SsnInput.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
@@ -51,6 +49,11 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
   const [ssnLoading, setSsnLoading] = useState(false);
   const [ssnError, setSsnError] = useState("");
 
+  // 매도자(임대인) 고객 검색 (수정 모드)
+  const [ownerQuery, setOwnerQuery] = useState("");
+  const [ownerResults, setOwnerResults] = useState([]);
+  const [ownerHighlight, setOwnerHighlight] = useState(0);
+
   async function handleRevealSsn() {
     if (ssnRevealed) {
       setSsnRevealed(null);
@@ -58,7 +61,11 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
     }
     setSsnLoading(true);
     setSsnError("");
-    const res = await fetch(`/api/properties/${propertyId}/ssn`);
+    // 고객과 연동된 매물이면 고객 쪽 주민번호를, 아니면(과거 직접입력분) 매물 쪽 주민번호를 사용
+    const url = data?.owner_client_id
+      ? `/api/clients/${data.owner_client_id}/ssn`
+      : `/api/properties/${propertyId}/ssn`;
+    const res = await fetch(url);
     setSsnLoading(false);
     if (res.ok) {
       const d = await res.json();
@@ -69,10 +76,57 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
     }
   }
 
+  async function searchOwners(q) {
+    setOwnerQuery(q);
+    const res = await fetch(`/api/clients?q=${encodeURIComponent(q)}`);
+    setOwnerResults(await res.json());
+    setOwnerHighlight(0);
+  }
+
+  async function handleOwnerFocus() {
+    if (ownerResults.length === 0) {
+      const res = await fetch(`/api/clients?q=${encodeURIComponent(ownerQuery)}`);
+      setOwnerResults(await res.json());
+      setOwnerHighlight(0);
+    }
+  }
+
+  function handleOwnerKeyDown(e) {
+    if (ownerResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOwnerHighlight((i) => Math.min(i + 1, ownerResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setOwnerHighlight((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pickOwner(ownerResults[ownerHighlight]);
+    } else if (e.key === "Escape") {
+      setOwnerResults([]);
+    }
+  }
+
+  function pickOwner(c) {
+    setForm((f) => ({ ...f, owner_client_id: c.id }));
+    setOwnerResults([]);
+    setOwnerQuery(`${c.name} (${c.phone || "연락처 없음"})`);
+  }
+
+  function clearOwner() {
+    setForm((f) => ({ ...f, owner_client_id: "" }));
+    setOwnerQuery("");
+  }
+
   useEffect(() => {
     fetch(`/api/properties/${propertyId}`).then((r) => r.json()).then((d) => {
       setData(d);
-      setForm({ ...d, owner_ssn: "" });
+      setForm(d);
+      setOwnerQuery(
+        d.owner_client_id && d.owner_client_name
+          ? `${d.owner_client_name} (${d.owner_client_phone || "연락처 없음"})`
+          : ""
+      );
     });
     fetch("/api/partner-agencies").then((r) => r.json()).then((d) => setAgencies(Array.isArray(d) ? d : []));
   }, [propertyId]);
@@ -124,13 +178,22 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <Row label="동/호수" value={[data.dong, data.ho].filter(Boolean).join(" ")} />
                 <Row label="평형" value={data.unit_type} />
                 <Row label="사용유형" value={data.usage_type} />
-                <Row label="매도자/임대인" value={[data.owner_name, data.owner_phone].filter(Boolean).join(" · ")} />
+                <Row
+                  label="매도자/임대인"
+                  value={
+                    data.owner_client_id
+                      ? [data.owner_client_name, data.owner_client_phone].filter(Boolean).join(" · ")
+                      : [data.owner_name, data.owner_phone].filter(Boolean).join(" · ")
+                  }
+                />
                 <div className="flex gap-2 items-start">
                   <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">주민번호</span>
                   <div className="flex-1">
-                    {data.owner_ssn_masked ? (
+                    {(data.owner_client_ssn_masked || data.owner_ssn_masked) ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-700 font-mono">{ssnRevealed || data.owner_ssn_masked}</span>
+                        <span className="text-slate-700 font-mono">
+                          {ssnRevealed || data.owner_client_ssn_masked || data.owner_ssn_masked}
+                        </span>
                         <button
                           onClick={handleRevealSsn}
                           disabled={ssnLoading}
@@ -191,7 +254,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <input value={form.property_name || ""} onChange={(e) => setForm({ ...form, property_name: e.target.value })}
                   placeholder="매물명" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.property_type || ""} onChange={(e) => setForm({ ...form, property_type: e.target.value })}
-                  placeholder="구분 (아파트/빌라/상가)" className="border border-slate-200 rounded-lg h-9 px-3" />
+                  placeholder="구분 (아파트/빌라/오피스텔/상가/기타)" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <div className="flex gap-2">
                   <input value={form.dong || ""} onChange={(e) => setForm({ ...form, dong: e.target.value })}
                     placeholder="동" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
@@ -206,29 +269,41 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <select value={form.partner_agency_id || ""} onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">
                   <option value="">물건지부동산 없음 (단독중개)</option>
-                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}</option>)}
+                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>)}
                 </select>
 
-                <div className="flex gap-2">
-                  <input value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-                    placeholder="매도자(임대인) 성명" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
-                  <PhoneInput
-                    value={form.owner_phone}
-                    onChange={(v) => setForm({ ...form, owner_phone: v })}
-                    placeholder="연락처"
-                    className="border border-slate-200 rounded-lg h-9 px-3 flex-1"
-                  />
+                <label className="text-slate-400 -mb-1">매도자(임대인) 고객 검색</label>
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="이름 또는 연락처로 검색, 또는 클릭해서 목록 보기"
+                      value={ownerQuery}
+                      onChange={(e) => searchOwners(e.target.value)}
+                      onFocus={handleOwnerFocus}
+                      onKeyDown={handleOwnerKeyDown}
+                      className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
+                    />
+                    {form.owner_client_id && (
+                      <button type="button" onClick={clearOwner} className="shrink-0 border border-slate-200 rounded-lg h-9 px-3 text-slate-500 hover:bg-slate-50">
+                        선택해제
+                      </button>
+                    )}
+                  </div>
+                  {ownerResults.length > 0 && (
+                    <div className="absolute z-10 bg-white border border-slate-200 rounded-lg mt-1 w-full max-h-40 overflow-y-auto shadow-sm">
+                      {ownerResults.map((c, i) => (
+                        <div
+                          key={c.id}
+                          onMouseEnter={() => setOwnerHighlight(i)}
+                          onClick={() => pickOwner(c)}
+                          className={`px-3 py-2 cursor-pointer ${i === ownerHighlight ? "bg-violet-100" : "hover:bg-violet-50"}`}
+                        >
+                          {c.name} · {c.phone || "연락처 없음"}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                <label className="text-slate-400 -mb-1">
-                  매도자(임대인) 주민번호 {data.owner_ssn_masked && <span className="text-slate-300">(변경 시에만 입력, 비워두면 기존 값 유지)</span>}
-                </label>
-                <SsnInput
-                  value={form.owner_ssn}
-                  onChange={(v) => setForm({ ...form, owner_ssn: v })}
-                  placeholder={data.owner_ssn_masked ? "등록된 주민번호가 있어요 (변경 시에만 입력)" : "990101-1234567"}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                />
 
                 <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">
@@ -259,7 +334,15 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <textarea value={form.memo || ""} onChange={(e) => setForm({ ...form, memo: e.target.value })}
                   placeholder="비고" className="border border-slate-200 rounded-lg p-3 h-16" />
                 <div className="flex justify-end gap-2 mt-2">
-                  <button onClick={() => { setEditing(false); setForm({ ...data, owner_ssn: "" }); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
+                  <button onClick={() => {
+                    setEditing(false);
+                    setForm(data);
+                    setOwnerQuery(
+                      data.owner_client_id && data.owner_client_name
+                        ? `${data.owner_client_name} (${data.owner_client_phone || "연락처 없음"})`
+                        : ""
+                    );
+                  }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
                   <button onClick={handleSave} disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
                     {saving ? "저장 중..." : "저장"}
                   </button>
