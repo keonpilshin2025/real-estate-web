@@ -166,6 +166,7 @@ export default function ContractMapping() {
   const [clientQuery, setClientQuery] = useState("");
   const [clientResults, setClientResults] = useState([]);
   const [clientHighlight, setClientHighlight] = useState(0);
+  const [selectedBuyers, setSelectedBuyers] = useState([]); // 역할이 "매수인"일 때만 사용 (공동매수 다수 가능)
 
   const [propQuery, setPropQuery] = useState("");
   const [propResults, setPropResults] = useState([]);
@@ -297,9 +298,19 @@ export default function ContractMapping() {
   }
 
   function pickClient(c) {
+    if (form.client_role === "매수인") {
+      setSelectedBuyers((prev) => (prev.some((b) => b.id === c.id) ? prev : [...prev, c]));
+      setClientResults([]);
+      setClientQuery("");
+      return;
+    }
     setForm({ ...form, client_id: c.id });
     setClientResults([]);
     setClientQuery(`${c.name} (${c.phone || "연락처 없음"})`);
+  }
+
+  function removeBuyer(id) {
+    setSelectedBuyers((prev) => prev.filter((b) => b.id !== id));
   }
 
   // 매물 선택 시, 그 매물에 등록된 거래유형/희망가/물건지부동산을 계약 폼에 기본값으로 채워줌
@@ -377,6 +388,11 @@ export default function ContractMapping() {
 
     if (blockingRows.length > 0) return; // 방어적 체크 (버튼은 이미 비활성화되어 있음)
 
+    if (form.client_role === "매수인" && selectedBuyers.length === 0) {
+      alert("매수인을 1명 이상 선택해주세요.");
+      return;
+    }
+
     if (warningRows.length > 0) {
       const names = warningRows.map((d) => `${d.contract_type}·${d.client_name}(${d.client_role})`).join(", ");
       const ok = confirm(
@@ -387,20 +403,31 @@ export default function ContractMapping() {
 
     setSaving(true);
 
-    const res = await fetch("/api/contracts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    // 매수인은 공동매수 가능 -> 선택된 인원 수만큼 각각 1건씩 등록 (같은 조건, 사람만 다름)
+    const buyerIds = form.client_role === "매수인" ? selectedBuyers.map((b) => b.id) : [form.client_id];
+    const failed = [];
+
+    for (const clientId of buyerIds) {
+      const res = await fetch("/api/contracts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, client_id: clientId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        const person = selectedBuyers.find((b) => b.id === clientId);
+        failed.push(`${person ? person.name : clientId}: ${data.error || "저장 실패"}`);
+      }
+    }
 
     setSaving(false);
 
-    if (res.ok) {
+    if (failed.length === 0) {
       closeForm();
       fetchContracts();
     } else {
-      const data = await res.json();
-      alert(data.error || "저장에 실패했습니다.");
+      alert(`일부 등록에 실패했습니다.\n${failed.join("\n")}`);
+      fetchContracts();
     }
   }
 
@@ -419,6 +446,7 @@ export default function ContractMapping() {
     setWarningRows([]);
     setMoveInTouched(false);
     setDownPaymentTouched(false);
+    setSelectedBuyers([]);
   }
 
   const brokerageType = form.partner_agency_id ? "공동" : "단독";
@@ -440,6 +468,10 @@ export default function ContractMapping() {
           + 계약 등록
         </button>
       </div>
+
+      <p className="text-slate-400 text-xs px-1">
+        수정 버튼을 누르시면 계약 당시의 주소를 확인할 수 있어요.
+      </p>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
         <table className="w-full text-xs min-w-[960px]">
@@ -553,7 +585,29 @@ export default function ContractMapping() {
             <h3 className="text-sm font-semibold text-slate-800 mb-4">계약 등록</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2 text-xs">
 
-              <label className="text-slate-400 col-span-2 -mb-1">고객 검색 * <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span></label>
+              <select
+                required
+                value={form.client_role}
+                onChange={(e) => {
+                  const nextRole = e.target.value;
+                  setForm({ ...form, client_role: nextRole, client_id: "" });
+                  setClientQuery("");
+                  setClientResults([]);
+                  setSelectedBuyers([]);
+                }}
+                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+              >
+                <option value="">고객 구분 (매도/매수 등) 선택 *</option>
+                {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+
+              <label className="text-slate-400 col-span-2 -mb-1">
+                고객 검색 * {form.client_role === "매수인" ? (
+                  <span className="text-slate-300">(공동매수면 여러 명 계속 추가 가능, 방향키로 선택 가능)</span>
+                ) : (
+                  <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span>
+                )}
+              </label>
               <div className="col-span-2 relative">
                 <input
                   placeholder="이름 또는 연락처로 검색, 또는 클릭해서 목록 보기"
@@ -562,7 +616,7 @@ export default function ContractMapping() {
                   onFocus={handleClientFocus}
                   onKeyDown={handleClientKeyDown}
                   className="w-full border border-slate-200 rounded-lg h-9 px-3"
-                  required
+                  required={form.client_role !== "매수인"}
                 />
                 {clientResults.length > 0 && (
                   <div className="absolute z-10 bg-white border border-slate-200 rounded-lg mt-1 w-full max-h-40 overflow-y-auto shadow-sm">
@@ -574,21 +628,24 @@ export default function ContractMapping() {
                         className={`px-3 py-2 cursor-pointer ${i === clientHighlight ? "bg-violet-100" : "hover:bg-violet-50"}`}
                       >
                         {c.name} · {c.phone || "연락처 없음"}
+                        {form.client_role === "매수인" && selectedBuyers.some((b) => b.id === c.id) && (
+                          <span className="text-violet-400 ml-1">✓ 추가됨</span>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
+                {form.client_role === "매수인" && selectedBuyers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedBuyers.map((b) => (
+                      <span key={b.id} className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 rounded-full pl-3 pr-2 py-1">
+                        {b.name} ({b.phone || "연락처 없음"})
+                        <button type="button" onClick={() => removeBuyer(b.id)} className="text-violet-400 hover:text-violet-700 ml-1">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              <select
-                required
-                value={form.client_role}
-                onChange={(e) => setForm({ ...form, client_role: e.target.value })}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              >
-                <option value="">고객 구분 (매도/매수 등) 선택 *</option>
-                {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
 
               <label className="text-slate-400 col-span-2 -mb-1">매물 검색 * <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span></label>
               <div className="col-span-2 relative">

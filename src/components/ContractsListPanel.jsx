@@ -47,14 +47,18 @@ function isBuyerSide(role) {
 
 function sellerDisplayName(c) {
   if (isSellerSide(c.client_role)) return c.client_name;
-  return c.property_owner_client_name || c.property_owner_name || null;
+  const owners = c.property_owners || [];
+  if (owners.length === 0) return c.property_owner_name || null;
+  if (owners.length === 1) return owners[0].name;
+  return `${owners[0].name} 외 ${owners.length - 1}명`;
 }
 
 // 매도(임대)인 클릭 시 열어줄 고객 id: 계약에 직접 매도/임대 역할로 등록됐으면 그 고객,
-// 아니면 매물에 연동된 고객(owner_client_id)을 사용
+// 매물에 연동된 소유자가 1명이면 그 고객, 공동명의(2명 이상)면 개별 지정 불가하므로 null(매물 팝업으로 폴백)
 function sellerClientId(c) {
   if (isSellerSide(c.client_role)) return c.client_id;
-  return c.property_owner_client_id || null;
+  const owners = c.property_owners || [];
+  return owners.length === 1 ? owners[0].id : null;
 }
 
 function computeDealStatus(status, balanceDate) {
@@ -126,6 +130,28 @@ function sortByStatusThenBalanceDate(list) {
   });
 }
 
+// 완료 상태인 계약 중 같은 고객(client_id)이 여러 건이면 가장 최근(잔금일 기준) 1건만 남김.
+// 진행/대기 상태는 전부 그대로 보여줌.
+// 완료 상태인 전세/월세 계약 중 같은 고객(client_id)이 여러 건이면 가장 최근(잔금일 기준) 1건만 남김.
+// 매매는 같은 고객이라도 전부 표시하고, 진행/대기 상태도 전부 그대로 보여줌.
+function dedupeCompletedByClient(list) {
+  const latestByClient = new Map(); // client_id -> { id, time }
+  for (const c of list) {
+    if (c.contract_type === "매매") continue;
+    if (computeDealStatus(c.deal_status, c.balance_date) !== "완료") continue;
+    const time = new Date(c.balance_date || c.created_at || 0).getTime();
+    const existing = latestByClient.get(c.client_id);
+    if (!existing || time > existing.time) {
+      latestByClient.set(c.client_id, { id: c.id, time });
+    }
+  }
+  return list.filter((c) => {
+    if (c.contract_type === "매매") return true;
+    if (computeDealStatus(c.deal_status, c.balance_date) !== "완료") return true;
+    return latestByClient.get(c.client_id)?.id === c.id;
+  });
+}
+
 const EXCEL_COLUMNS = [
   { key: "property_name", label: "매물명" },
   { key: "contract_type", label: "거래유형" },
@@ -160,7 +186,7 @@ export default function ContractsListPanel() {
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
-    setContracts(sortByStatusThenBalanceDate(Array.isArray(data) ? data : []));
+    setContracts(sortByStatusThenBalanceDate(dedupeCompletedByClient(Array.isArray(data) ? data : [])));
     setLoading(false);
   }
 
@@ -204,6 +230,10 @@ export default function ContractsListPanel() {
           {exporting ? "다운로드 중..." : "엑셀 다운로드"}
         </button>
       </form>
+
+      <p className="text-slate-400 text-xs px-1">
+        전세·월세 계약 중 완료 건은 고객별로 가장 최근 1건만 표시돼요.
+      </p>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
         <table className="w-full text-xs min-w-[980px]">

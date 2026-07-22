@@ -52,11 +52,21 @@ export async function PUT({ request, params }) {
     sellerAddressSnapshot = c?.address || null;
   } else {
     const [p] = await sql`
-      SELECT oc.address FROM properties p
-      LEFT JOIN clients oc ON oc.id = p.owner_client_id
-      WHERE p.id = ${property_id}
+      SELECT oc.address FROM property_owners po
+      JOIN clients oc ON oc.id = po.client_id
+      WHERE po.property_id = ${property_id}
+      ORDER BY po.id
+      LIMIT 1
     `;
     sellerAddressSnapshot = p?.address || null;
+  }
+
+  // 매수(임차)인 주소 스냅샷 재계산
+  const isBuyer = client_role === "매수인" || client_role === "임차인";
+  let buyerAddressSnapshot = null;
+  if (isBuyer) {
+    const [c] = await sql`SELECT address FROM clients WHERE id = ${client_id}`;
+    buyerAddressSnapshot = c?.address || null;
   }
 
   try {
@@ -79,6 +89,7 @@ export async function PUT({ request, params }) {
         brokerage_type = ${brokerageType},
         deal_status = ${deal_status || "진행"},
         seller_address_snapshot = ${sellerAddressSnapshot},
+        buyer_address_snapshot = ${buyerAddressSnapshot},
         updated_at = now()
       WHERE id = ${id}
       RETURNING *

@@ -17,11 +17,17 @@ export async function GET({ request }) {
     SELECT
       p.*,
       pa.agency_name AS partner_agency_name,
-      oc.name AS owner_client_name,
-      oc.phone AS owner_client_phone
+      COALESCE(
+        (
+          SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
+          FROM property_owners po
+          JOIN clients oc ON oc.id = po.client_id
+          WHERE po.property_id = p.id
+        ),
+        '[]'
+      ) AS owners
     FROM properties p
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
-    LEFT JOIN clients oc ON oc.id = p.owner_client_id
     WHERE
       (${type} = '' OR p.property_type = ${type})
       AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.address ILIKE ${'%' + q + '%'})
@@ -53,7 +59,7 @@ export async function POST({ request }) {
     property_name, property_type, dong, ho, address,
     unit_type, usage_type, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-    owner_client_id, partner_agency_id,
+    owner_client_ids, primary_owner_client_id, partner_agency_id,
   } = body;
 
   if (!property_name || !property_type) {
@@ -61,23 +67,32 @@ export async function POST({ request }) {
   }
 
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
+  const ownerIds = Array.isArray(owner_client_ids) ? owner_client_ids.map(toInt).filter((v) => v !== null) : [];
+  const primaryId = toInt(primary_owner_client_id) ?? (ownerIds.length > 0 ? ownerIds[0] : null);
 
   const [row] = await sql`
     INSERT INTO properties
       (property_name, property_type, dong, ho, address, unit_type, usage_type, features, memo,
-       transaction_type, asking_price, asking_deposit, asking_monthly_rent,
-       owner_client_id, partner_agency_id)
+       transaction_type, asking_price, asking_deposit, asking_monthly_rent, partner_agency_id)
     VALUES
       (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${address || null},
        ${unit_type || null}, ${usage_type || null}, ${features || null}, ${memo || null},
        ${transaction_type || null}, ${toInt(asking_price)}, ${toInt(asking_deposit)}, ${toInt(asking_monthly_rent)},
-       ${toInt(owner_client_id)}, ${toInt(partner_agency_id)})
+       ${toInt(partner_agency_id)})
     RETURNING *
   `;
 
+  for (const cid of ownerIds) {
+    await sql`
+      INSERT INTO property_owners (property_id, client_id, is_primary)
+      VALUES (${row.id}, ${cid}, ${cid === primaryId})
+      ON CONFLICT DO NOTHING
+    `;
+  }
+
   const { owner_ssn_encrypted, ...safeRow } = row;
 
-  return new Response(JSON.stringify(safeRow), {
+  return new Response(JSON.stringify({ ...safeRow, owner_client_ids: ownerIds }), {
     status: 201,
     headers: { "Content-Type": "application/json" },
   });

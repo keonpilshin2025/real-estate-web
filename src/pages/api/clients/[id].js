@@ -77,6 +77,24 @@ export async function PUT({ request, params }) {
 export async function DELETE({ params }) {
   const sql = getDb(env.DATABASE_URL);
   const id = Number(params.id);
+
+  const [{ count: contractCount }] = await sql`
+    SELECT COUNT(*)::int AS count FROM contracts WHERE client_id = ${id} AND is_deleted = FALSE
+  `;
+  const [{ count: ownerCount }] = await sql`
+    SELECT COUNT(*)::int AS count FROM properties WHERE owner_client_id = ${id}
+  `;
+
+  if (contractCount > 0 || ownerCount > 0) {
+    const parts = [];
+    if (contractCount > 0) parts.push(`연결된 계약 ${contractCount}건`);
+    if (ownerCount > 0) parts.push(`매도자/임대인으로 연결된 매물 ${ownerCount}건`);
+    return new Response(
+      JSON.stringify({ error: `${parts.join(", ")}이 있어 삭제할 수 없습니다. 먼저 연결을 해제해주세요.` }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   await sql`DELETE FROM clients WHERE id = ${id}`;
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,

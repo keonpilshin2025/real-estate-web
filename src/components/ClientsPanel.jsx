@@ -162,8 +162,13 @@ export default function ClientsPanel() {
 
   async function handleDelete(id) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`/api/clients/${id}`, { method: "DELETE" });
-    fetchClients();
+    const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      fetchClients();
+    } else {
+      const data = await res.json();
+      alert(data.error || "삭제에 실패했습니다.");
+    }
   }
 
   return (

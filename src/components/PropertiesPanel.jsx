@@ -64,9 +64,17 @@ const EXCEL_COLUMNS = [
         ? `${formatEokMan(row.asking_deposit)} / ${formatEokMan(row.asking_monthly_rent)}`
         : formatEokMan(row.asking_price),
   },
-  { key: "owner_client_name", label: "매도자/임대인 성명", format: (v, row) => v || row.owner_name || "-" },
-  { key: "owner_client_phone", label: "매도자/임대인 연락처", format: (v, row) => v || row.owner_phone || "-" },
-  { key: "owner_ssn_masked", label: "매도자/임대인 주민번호", format: (v) => v || "-" },
+  {
+    key: "owners",
+    label: "매도자/임대인 성명",
+    format: (v, row) => (Array.isArray(v) && v.length > 0 ? v.map((o) => o.name).join(", ") : row.owner_name || "-"),
+  },
+  {
+    key: "owners",
+    label: "매도자/임대인 연락처",
+    format: (v, row) => (Array.isArray(v) && v.length > 0 ? v.map((o) => o.phone || "-").join(", ") : row.owner_phone || "-"),
+  },
+  { key: "owner_ssn_masked", label: "매도자/임대인 주민번호(구)", format: (v) => v || "-" },
   { key: "partner_agency_name", label: "중개유형", format: (v) => (v ? `공동 · ${v}` : "단독") },
   { key: "address", label: "주소" },
   { key: "features", label: "특장점" },
@@ -87,7 +95,6 @@ const emptyForm = {
   asking_price: "",
   asking_deposit: "",
   asking_monthly_rent: "",
-  owner_client_id: "",
   partner_agency_id: "",
 };
 
@@ -110,6 +117,8 @@ export default function PropertiesPanel() {
   const [ownerQuery, setOwnerQuery] = useState("");
   const [ownerResults, setOwnerResults] = useState([]);
   const [ownerHighlight, setOwnerHighlight] = useState(0);
+  const [selectedOwners, setSelectedOwners] = useState([]); // [{ id, name, phone }] 공동명의 다수 가능
+  const [primaryOwnerId, setPrimaryOwnerId] = useState(null); // 주 계약자(대표)
 
   async function fetchProperties() {
     setLoading(true);
@@ -164,14 +173,22 @@ export default function PropertiesPanel() {
   }
 
   function pickOwner(c) {
-    setForm((f) => ({ ...f, owner_client_id: c.id }));
+    setSelectedOwners((prev) => {
+      if (prev.some((o) => o.id === c.id)) return prev;
+      const next = [...prev, c];
+      if (prev.length === 0) setPrimaryOwnerId(c.id); // 첫 소유자는 자동으로 주 계약자
+      return next;
+    });
     setOwnerResults([]);
-    setOwnerQuery(`${c.name} (${c.phone || "연락처 없음"})`);
+    setOwnerQuery("");
   }
 
-  function clearOwner() {
-    setForm((f) => ({ ...f, owner_client_id: "" }));
-    setOwnerQuery("");
+  function removeOwner(id) {
+    setSelectedOwners((prev) => {
+      const next = prev.filter((o) => o.id !== id);
+      if (primaryOwnerId === id) setPrimaryOwnerId(next.length > 0 ? next[0].id : null);
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -236,7 +253,7 @@ export default function PropertiesPanel() {
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, owner_client_ids: selectedOwners.map((o) => o.id), primary_owner_client_id: primaryOwnerId }),
     });
 
     setSaving(false);
@@ -259,6 +276,8 @@ export default function PropertiesPanel() {
     setEditingId(null);
     setOwnerQuery("");
     setOwnerResults([]);
+    setSelectedOwners([]);
+    setPrimaryOwnerId(null);
     setShowForm(true);
   }
 
@@ -277,15 +296,13 @@ export default function PropertiesPanel() {
       asking_price: p.asking_price || "",
       asking_deposit: p.asking_deposit || "",
       asking_monthly_rent: p.asking_monthly_rent || "",
-      owner_client_id: p.owner_client_id || "",
       partner_agency_id: p.partner_agency_id || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
-    setOwnerQuery(
-      p.owner_client_id && p.owner_client_name
-        ? `${p.owner_client_name} (${p.owner_client_phone || "연락처 없음"})`
-        : ""
-    );
+    const owners = Array.isArray(p.owners) ? p.owners : [];
+    setSelectedOwners(owners);
+    setPrimaryOwnerId(owners.find((o) => o.is_primary)?.id ?? (owners[0]?.id ?? null));
+    setOwnerQuery("");
     setOwnerResults([]);
     setEditingId(p.id);
     setShowForm(true);
@@ -293,8 +310,13 @@ export default function PropertiesPanel() {
 
   async function handleDelete(id) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`/api/properties/${id}`, { method: "DELETE" });
-    fetchProperties();
+    const res = await fetch(`/api/properties/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      fetchProperties();
+    } else {
+      const data = await res.json();
+      alert(data.error || "삭제에 실패했습니다.");
+    }
   }
 
   return (
@@ -445,7 +467,7 @@ export default function PropertiesPanel() {
               />
 
               <label className="text-slate-400 col-span-2 -mb-1">
-                매도자(임대인) 고객 검색 <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span>
+                매도자(임대인) 고객 검색 <span className="text-slate-300">(공동명의면 여러 명 추가 가능, 방향키로 선택 가능)</span>
               </label>
               <div className="col-span-2 relative">
                 <div className="flex gap-2">
@@ -457,11 +479,6 @@ export default function PropertiesPanel() {
                     onKeyDown={handleOwnerKeyDown}
                     className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
                   />
-                  {form.owner_client_id && (
-                    <button type="button" onClick={clearOwner} className="shrink-0 border border-slate-200 rounded-lg h-9 px-3 text-slate-500 hover:bg-slate-50">
-                      선택해제
-                    </button>
-                  )}
                 </div>
                 {ownerResults.length > 0 && (
                   <div className="absolute z-10 bg-white border border-slate-200 rounded-lg mt-1 w-full max-h-40 overflow-y-auto shadow-sm">
@@ -473,10 +490,41 @@ export default function PropertiesPanel() {
                         className={`px-3 py-2 cursor-pointer ${i === ownerHighlight ? "bg-violet-100" : "hover:bg-violet-50"}`}
                       >
                         {c.name} · {c.phone || "연락처 없음"}
+                        {selectedOwners.some((o) => o.id === c.id) && <span className="text-violet-400 ml-1">✓ 추가됨</span>}
                       </div>
                     ))}
                   </div>
                 )}
+
+                {selectedOwners.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedOwners.map((o) => (
+                      <span
+                        key={o.id}
+                        className={`inline-flex items-center gap-1 rounded-full pl-3 pr-2 py-1 ${
+                          primaryOwnerId === o.id ? "bg-violet-100 text-violet-700 ring-1 ring-violet-300" : "bg-violet-50 text-violet-600"
+                        }`}
+                      >
+                        {primaryOwnerId === o.id && <span title="주 계약자">★</span>}
+                        {o.name} ({o.phone || "연락처 없음"})
+                        {selectedOwners.length > 1 && primaryOwnerId !== o.id && (
+                          <button
+                            type="button"
+                            onClick={() => setPrimaryOwnerId(o.id)}
+                            className="text-violet-400 hover:text-violet-700 ml-1 underline decoration-dotted"
+                          >
+                            대표로 지정
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removeOwner(o.id)} className="text-violet-400 hover:text-violet-700 ml-1">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {selectedOwners.length > 1 && (
+                  <p className="text-slate-400 mt-1">★ 표시된 사람이 주 계약자예요. 실무 협의는 이 사람 위주로 하시면 되고, 계약서엔 전원 정보가 그대로 유지돼요.</p>
+                )}
+
                 <p className="text-slate-400 mt-1">
                   목록에 없으면 먼저 "고객" 탭에서 등록해주세요. 성명/연락처/주민번호는 연결된 고객 정보를 그대로 사용해요.
                 </p>
