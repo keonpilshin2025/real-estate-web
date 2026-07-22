@@ -4,9 +4,12 @@ import { decryptToMasked } from "../../../lib/crypto.js";
 
 export const prerender = false;
 
-export async function GET({ params }) {
+export async function GET({ params, request }) {
   const sql = getDb(env.DATABASE_URL);
   const id = Number(params.id);
+  const url = new URL(request.url);
+  const clientIdParam = url.searchParams.get("client_id");
+  const contextClientId = clientIdParam ? Number(clientIdParam) : null;
 
   const [row] = await sql`
     SELECT
@@ -17,14 +20,19 @@ export async function GET({ params }) {
       c.price AS final_price,
       c.deposit AS final_deposit,
       c.monthly_rent AS final_monthly_rent,
-      c.balance_date AS final_balance_date
+      c.balance_date AS final_balance_date,
+      c.deal_status AS final_deal_status
     FROM properties p
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
     LEFT JOIN LATERAL (
       SELECT * FROM contracts c2
       WHERE c2.property_id = p.id
         AND c2.is_deleted = FALSE
-        AND (c2.balance_date IS NULL OR c2.balance_date >= now())
+        AND (
+          -- client_id가 지정되면 정확히 그 계약(그 시점 그대로)을, 아니면 현재 진행 중인 계약을 사용
+          (${contextClientId}::int IS NOT NULL AND c2.client_id = ${contextClientId})
+          OR (${contextClientId}::int IS NULL AND (c2.balance_date IS NULL OR c2.balance_date >= now()))
+        )
       ORDER BY c2.created_at DESC
       LIMIT 1
     ) c ON true

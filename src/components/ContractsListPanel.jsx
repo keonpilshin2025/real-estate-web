@@ -177,6 +177,7 @@ export default function ContractsListPanel() {
   const [q, setQ] = useState("");
   const [openClientId, setOpenClientId] = useState(null);
   const [openPropertyId, setOpenPropertyId] = useState(null);
+  const [openPropertyContextClientId, setOpenPropertyContextClientId] = useState(null);
   const [openContractId, setOpenContractId] = useState(null);
   const [openAgencyId, setOpenAgencyId] = useState(null);
   const [exporting, setExporting] = useState(false);
@@ -265,7 +266,7 @@ export default function ContractsListPanel() {
                 <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => setOpenPropertyId(c.property_id)}
+                      onClick={() => { setOpenPropertyId(c.property_id); setOpenPropertyContextClientId(c.client_id); }}
                       className="font-medium text-violet-500 hover:underline"
                     >
                       {c.property_name}
@@ -288,7 +289,14 @@ export default function ContractsListPanel() {
                   <td className="px-4 py-3">
                     {sellerName ? (
                       <button
-                        onClick={() => (sellerClId ? setOpenClientId(sellerClId) : setOpenPropertyId(c.property_id))}
+                        onClick={() => {
+                          if (sellerClId) {
+                            setOpenClientId(sellerClId);
+                          } else {
+                            setOpenPropertyId(c.property_id);
+                            setOpenPropertyContextClientId(c.client_id);
+                          }
+                        }}
                         className="font-medium text-violet-500 hover:underline"
                         title={sellerClId ? "고객 정보 보기" : "매물에 등록된 매도자/임대인 정보 보기"}
                       >
@@ -339,7 +347,8 @@ export default function ContractsListPanel() {
       {openPropertyId && (
         <PropertyPopup
           propertyId={openPropertyId}
-          onClose={() => setOpenPropertyId(null)}
+          contractClientId={openPropertyContextClientId}
+          onClose={() => { setOpenPropertyId(null); setOpenPropertyContextClientId(null); }}
           onSaved={fetchContracts}
         />
       )}

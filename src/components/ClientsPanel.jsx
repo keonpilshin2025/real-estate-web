@@ -98,16 +98,16 @@ export default function ClientsPanel() {
       setForm({ ...form, name: value });
       return;
     }
-    const filtered = value.replace(/[^가-힣]/g, "");
+    const filtered = value.replace(/[^가-힣a-zA-Z\s.'-]/g, "");
     setForm({ ...form, name: filtered });
-    setNameError(value !== filtered ? "이름은 한글만 입력 가능합니다." : "");
+    setNameError(value !== filtered ? "이름은 한글 또는 영문만 입력 가능합니다." : "");
   }
 
   function handleNameCompositionEnd(value) {
     setComposing(false);
-    const filtered = value.replace(/[^가-힣]/g, "");
+    const filtered = value.replace(/[^가-힣a-zA-Z\s.'-]/g, "");
     setForm({ ...form, name: filtered });
-    setNameError(value !== filtered ? "이름은 한글만 입력 가능합니다." : "");
+    setNameError(value !== filtered ? "이름은 한글 또는 영문만 입력 가능합니다." : "");
   }
 
   async function handleSubmit(e) {
@@ -256,7 +256,7 @@ export default function ClientsPanel() {
             <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingId ? "고객 정보 수정" : "고객 등록"}</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2 text-xs">
               <input
-                placeholder="이름 (한글만) *"
+                placeholder="이름 (한글 또는 영문) *"
                 required
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}

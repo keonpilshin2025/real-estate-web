@@ -89,7 +89,7 @@ function OwnerSsnRow({ owner }) {
   );
 }
 
-export default function PropertyPopup({ propertyId, onClose, onSaved }) {
+export default function PropertyPopup({ propertyId, contractClientId, onClose, onSaved }) {
   const [data, setData] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
@@ -154,7 +154,10 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
   }
 
   useEffect(() => {
-    fetch(`/api/properties/${propertyId}`).then((r) => r.json()).then((d) => {
+    const url = contractClientId
+      ? `/api/properties/${propertyId}?client_id=${contractClientId}`
+      : `/api/properties/${propertyId}`;
+    fetch(url).then((r) => r.json()).then((d) => {
       setData(d);
       setForm(d);
       const owners = Array.isArray(d.owners) ? d.owners : [];
@@ -162,7 +165,7 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
       setPrimaryOwnerId(owners.find((o) => o.is_primary)?.id ?? (owners[0]?.id ?? null));
     });
     fetch("/api/partner-agencies").then((r) => r.json()).then((d) => setAgencies(Array.isArray(d) ? d : []));
-  }, [propertyId]);
+  }, [propertyId, contractClientId]);
 
   async function handleSave() {
     setSaving(true);
@@ -195,6 +198,18 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
       : formatEokMan(data.final_price)
     : null;
   const finalAmountLabel = data?.final_contract_type === "매매" ? "최종매매가" : "최종보증금";
+
+  // 최종 계약의 거래상태 계산 (완료면 잔금일이 지난 것도 포함)
+  function computeFinalDealStatus() {
+    if (!hasFinal) return null;
+    if (data.final_deal_status === "완료") return "완료";
+    if (data.final_balance_date) {
+      const d = new Date(data.final_balance_date);
+      if (!isNaN(d.getTime()) && d.getTime() <= Date.now()) return "완료";
+    }
+    return data.final_deal_status || "진행";
+  }
+  const finalDealStatus = computeFinalDealStatus();
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -237,17 +252,22 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                   <>
                     <Row label="계약유형" value={data.final_contract_type} />
                     <div className="flex gap-2 items-start">
-                      <span className="text-slate-400 w-24 shrink-0 whitespace-nowrap">{finalAmountLabel}</span>
-                      <span className="text-violet-600 font-semibold">{finalDepositText}</span>
+                      <span className="text-slate-400 w-24 shrink-0">{finalAmountLabel}</span>
+                      <span className="text-violet-600 font-semibold">
+                        {finalDepositText}
+                        {contractClientId && <span className="text-slate-400 font-normal text-[11px] ml-1">(해당 계약)</span>}
+                      </span>
                     </div>
-                    <Row
-                      label="희망가(참고)"
-                      value={
-                        data.transaction_type === "월세"
-                          ? `${formatEokMan(data.asking_deposit)} / ${formatEokMan(data.asking_monthly_rent)}`
-                          : formatEokMan(data.asking_price)
-                      }
-                    />
+                    {finalDealStatus !== "완료" && (
+                      <Row
+                        label="희망가(참고)"
+                        value={
+                          data.transaction_type === "월세"
+                            ? `${formatEokMan(data.asking_deposit)} / ${formatEokMan(data.asking_monthly_rent)}`
+                            : formatEokMan(data.asking_price)
+                        }
+                      />
+                    )}
                   </>
                 ) : (
                   <>

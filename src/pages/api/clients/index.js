@@ -46,8 +46,8 @@ export async function POST({ request }) {
   if (!name) {
     return new Response(JSON.stringify({ error: "이름은 필수입니다." }), { status: 400 });
   }
-  if (!/^[가-힣]+$/.test(name)) {
-    return new Response(JSON.stringify({ error: "이름은 한글만 입력 가능합니다." }), { status: 400 });
+  if (!/^[가-힣a-zA-Z\s.'-]+$/.test(name)) {
+    return new Response(JSON.stringify({ error: "이름은 한글 또는 영문만 입력 가능합니다." }), { status: 400 });
   }
 
   const ssnEncrypted = ssn ? await encryptText(ssn, env) : null;

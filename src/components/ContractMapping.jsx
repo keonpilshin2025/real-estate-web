@@ -173,6 +173,7 @@ export default function ContractMapping() {
   const [propHighlight, setPropHighlight] = useState(0);
   const [openContractId, setOpenContractId] = useState(null);
   const [openPropertyId, setOpenPropertyId] = useState(null);
+  const [openPropertyContextClientId, setOpenPropertyContextClientId] = useState(null);
   const [openClientId, setOpenClientId] = useState(null);
   const [openAgencyId, setOpenAgencyId] = useState(null);
 
@@ -509,7 +510,7 @@ export default function ContractMapping() {
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => setOpenPropertyId(c.property_id)}
+                    onClick={() => { setOpenPropertyId(c.property_id); setOpenPropertyContextClientId(c.client_id); }}
                     className="font-medium text-violet-500 hover:underline"
                   >
                     {c.property_name}
@@ -560,7 +561,8 @@ export default function ContractMapping() {
       {openPropertyId && (
         <PropertyPopup
           propertyId={openPropertyId}
-          onClose={() => setOpenPropertyId(null)}
+          contractClientId={openPropertyContextClientId}
+          onClose={() => { setOpenPropertyId(null); setOpenPropertyContextClientId(null); }}
           onSaved={fetchContracts}
         />
       )}
