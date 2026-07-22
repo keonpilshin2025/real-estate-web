@@ -40,6 +40,43 @@ function EokManInput({ value, onChange }) {
 }
 
 // 소유자 1명에 대한 주민번호 보기/숨기기 (매도자/임대인 목록 각 항목에 사용)
+function formatHistoryDate(v) {
+  if (!v) return null;
+  return String(v).slice(0, 10);
+}
+
+// 소유자 변경 이력 (지금 소유자 포함 전체, 시간순) - 접었다 펼 수 있음
+function OwnerHistorySection({ history }) {
+  const [open, setOpen] = useState(false);
+  const sorted = [...history].sort((a, b) => new Date(a.since) - new Date(b.since));
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-slate-400 text-left hover:text-slate-600 flex items-center gap-1"
+      >
+        소유자 변경 이력 ({history.length}건) <span className="text-[10px]">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-1.5 border-l-2 border-slate-100 pl-3 ml-1">
+          {sorted.map((h, i) => (
+            <div key={`${h.id}-${h.since}`} className="text-slate-600">
+              <span className={h.until ? "text-slate-500" : "text-violet-600 font-medium"}>{h.name}</span>
+              <span className="text-slate-400"> · {h.phone || "연락처 없음"}</span>
+              <div className="text-[11px] text-slate-400">
+                {formatHistoryDate(h.since)} ~ {h.until ? formatHistoryDate(h.until) : "현재"}
+                {!h.until && <span className="text-violet-400 ml-1">(현재 소유자)</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OwnerSsnRow({ owner }) {
   const [revealed, setRevealed] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -233,9 +270,26 @@ export default function PropertyPopup({ propertyId, contractClientId, onClose, o
 
                 <div className="flex flex-col gap-1">
                   <span className="text-slate-400 whitespace-nowrap">
-                    매도자/임대인 {data.owners && data.owners.length > 1 && <span className="text-violet-400">(공동명의 {data.owners.length}인)</span>}
+                    매도자/임대인
+                    {!contractClientId && data.owners && data.owners.length > 1 && (
+                      <span className="text-violet-400"> (공동명의 {data.owners.length}인)</span>
+                    )}
+                    {contractClientId && <span className="text-violet-400"> (해당 계약 당시)</span>}
                   </span>
-                  {data.owners && data.owners.length > 0 ? (
+                  {contractClientId ? (
+                    data.final_seller_name ? (
+                      <OwnerSsnRow
+                        owner={{
+                          id: data.final_seller_client_id,
+                          name: data.final_seller_name,
+                          phone: data.final_seller_phone,
+                          ssn_masked: data.final_seller_ssn_masked,
+                        }}
+                      />
+                    ) : (
+                      <span className="text-slate-700">-</span>
+                    )
+                  ) : data.owners && data.owners.length > 0 ? (
                     <div className="flex flex-col gap-1.5">
                       {data.owners.map((o) => <OwnerSsnRow key={o.id} owner={o} />)}
                     </div>
@@ -245,6 +299,10 @@ export default function PropertyPopup({ propertyId, contractClientId, onClose, o
                     </span>
                   )}
                 </div>
+
+                {!contractClientId && data.owner_history && data.owner_history.length > 1 && (
+                  <OwnerHistorySection history={data.owner_history} />
+                )}
 
                 <Row label="물건지부동산" value={data.partner_agency_name ? `공동 · ${data.partner_agency_name}` : "단독"} />
 

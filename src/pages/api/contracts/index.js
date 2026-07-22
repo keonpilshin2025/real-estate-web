@@ -19,7 +19,7 @@ export async function GET({ request }) {
           SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
           FROM property_owners po
           JOIN clients oc ON oc.id = po.client_id
-          WHERE po.property_id = p.id
+          WHERE po.property_id = p.id AND po.removed_at IS NULL
         ),
         '[]'
       ) AS property_owners,
@@ -30,7 +30,7 @@ export async function GET({ request }) {
     JOIN clients cl ON cl.id = c.client_id
     LEFT JOIN partner_agencies pa ON pa.id = c.partner_agency_id
     WHERE c.is_deleted = FALSE
-      AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR cl.name ILIKE ${'%' + q + '%'})
+      AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.dong ILIKE ${'%' + q + '%'} OR p.ho ILIKE ${'%' + q + '%'} OR cl.name ILIKE ${'%' + q + '%'} OR c.seller_name_snapshot ILIKE ${'%' + q + '%'})
     ORDER BY c.created_at DESC
   `;
 
@@ -64,22 +64,31 @@ export async function POST({ request }) {
   const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
   const status = deal_status || "진행";
 
-  // 매도(임대)인 주소 스냅샷: 이 계약의 고객이 매도/임대 역할이면 그 고객 주소를,
-  // 아니면(고객이 매수/임차 역할이면) 매물에 연동된 소유자(공동명의 시 첫 번째 등록된 소유자)의 주소를 사용
+  // 매도(임대)인 이름/연락처/주소 스냅샷: 이 계약의 고객이 매도/임대 역할이면 그 고객 정보를,
+  // 아니면(고객이 매수/임차 역할이면) 매물에 연동된 소유자(공동명의 시 대표 소유자)의 정보를 사용
   const isSeller = client_role === "매도인" || client_role === "임대인";
+  let sellerNameSnapshot = null;
+  let sellerPhoneSnapshot = null;
   let sellerAddressSnapshot = null;
+  let sellerClientIdSnapshot = null;
   if (isSeller) {
-    const [c] = await sql`SELECT address FROM clients WHERE id = ${client_id}`;
+    const [c] = await sql`SELECT name, phone, address FROM clients WHERE id = ${client_id}`;
+    sellerNameSnapshot = c?.name || null;
+    sellerPhoneSnapshot = c?.phone || null;
     sellerAddressSnapshot = c?.address || null;
+    sellerClientIdSnapshot = client_id;
   } else {
     const [p] = await sql`
-      SELECT oc.address FROM property_owners po
+      SELECT oc.id, oc.name, oc.phone, oc.address FROM property_owners po
       JOIN clients oc ON oc.id = po.client_id
-      WHERE po.property_id = ${property_id}
-      ORDER BY po.id
+      WHERE po.property_id = ${property_id} AND po.removed_at IS NULL
+      ORDER BY po.is_primary DESC, po.id
       LIMIT 1
     `;
+    sellerNameSnapshot = p?.name || null;
+    sellerPhoneSnapshot = p?.phone || null;
     sellerAddressSnapshot = p?.address || null;
+    sellerClientIdSnapshot = p?.id || null;
   }
 
   // 매수(임차)인 주소 스냅샷: 이 계약의 고객이 매수/임차 역할일 때만 그 고객 주소를 고정
@@ -96,12 +105,14 @@ export async function POST({ request }) {
         (property_id, client_id, client_role, contract_type,
          price, deposit, monthly_rent, down_payment, balance_amount,
          contract_date, balance_date, move_in_date, memo,
-         partner_agency_id, brokerage_type, deal_status, seller_address_snapshot, buyer_address_snapshot)
+         partner_agency_id, brokerage_type, deal_status,
+         seller_address_snapshot, buyer_address_snapshot, seller_name_snapshot, seller_phone_snapshot, seller_client_id_snapshot)
       VALUES
         (${property_id}, ${client_id}, ${client_role}, ${contract_type},
          ${toInt(price)}, ${toInt(deposit)}, ${toInt(monthly_rent)}, ${toInt(down_payment)}, ${toInt(balance_amount)},
          ${contract_date || null}, ${balance_date || null}, ${move_in_date || null}, ${memo || null},
-         ${partnerAgencyIdInt}, ${brokerageType}, ${status}, ${sellerAddressSnapshot}, ${buyerAddressSnapshot})
+         ${partnerAgencyIdInt}, ${brokerageType}, ${status},
+         ${sellerAddressSnapshot}, ${buyerAddressSnapshot}, ${sellerNameSnapshot}, ${sellerPhoneSnapshot}, ${sellerClientIdSnapshot})
       RETURNING *
     `;
 

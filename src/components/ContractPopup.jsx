@@ -177,6 +177,10 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <Row label="매물" value={`${data.property_name} ${data.property_dong || ""} ${data.property_ho || ""}`} />
                 <Row label="고객" value={`${data.client_name} · ${data.client_phone || "-"}`} />
                 <Row label="구분" value={data.client_role} />
+                <Row
+                  label="매도(임대)인"
+                  value={[data.seller_name_snapshot, data.seller_phone_snapshot].filter(Boolean).join(" · ")}
+                />
                 <Row label="매도(임대)인 주소" value={data.seller_address_snapshot} />
                 <Row label="매수(임차)인 주소" value={data.buyer_address_snapshot} />
                 <Row label="중개유형" value={data.brokerage_type === "공동" ? `공동 · ${data.partner_agency_name || ""}` : "단독"} />

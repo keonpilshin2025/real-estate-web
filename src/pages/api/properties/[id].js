@@ -21,7 +21,10 @@ export async function GET({ params, request }) {
       c.deposit AS final_deposit,
       c.monthly_rent AS final_monthly_rent,
       c.balance_date AS final_balance_date,
-      c.deal_status AS final_deal_status
+      c.deal_status AS final_deal_status,
+      c.seller_name_snapshot AS final_seller_name,
+      c.seller_phone_snapshot AS final_seller_phone,
+      c.seller_client_id_snapshot AS final_seller_client_id
     FROM properties p
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
     LEFT JOIN LATERAL (
@@ -47,7 +50,7 @@ export async function GET({ params, request }) {
     SELECT oc.id, oc.name, oc.phone, oc.ssn_encrypted, po.is_primary
     FROM property_owners po
     JOIN clients oc ON oc.id = po.client_id
-    WHERE po.property_id = ${id}
+    WHERE po.property_id = ${id} AND po.removed_at IS NULL
     ORDER BY po.is_primary DESC, po.id
   `;
   const ownersSafe = await Promise.all(
@@ -58,10 +61,25 @@ export async function GET({ params, request }) {
     })
   );
 
+  // 소유자 변경 이력 (지금은 빠진 사람 포함 전체, 시간순)
+  const ownerHistory = await sql`
+    SELECT oc.id, oc.name, oc.phone, po.created_at AS since, po.removed_at AS until
+    FROM property_owners po
+    JOIN clients oc ON oc.id = po.client_id
+    WHERE po.property_id = ${id}
+    ORDER BY po.created_at ASC
+  `;
+
   const { owner_ssn_encrypted, ...rest } = row;
   const owner_ssn_masked = owner_ssn_encrypted ? await decryptToMasked(owner_ssn_encrypted, env) : null;
 
-  return new Response(JSON.stringify({ ...rest, owner_ssn_masked, owners: ownersSafe }), {
+  let final_seller_ssn_masked = null;
+  if (rest.final_seller_client_id) {
+    const [fc] = await sql`SELECT ssn_encrypted FROM clients WHERE id = ${rest.final_seller_client_id}`;
+    final_seller_ssn_masked = fc?.ssn_encrypted ? await decryptToMasked(fc.ssn_encrypted, env) : null;
+  }
+
+  return new Response(JSON.stringify({ ...rest, owner_ssn_masked, final_seller_ssn_masked, owners: ownersSafe, owner_history: ownerHistory }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -83,6 +101,30 @@ export async function PUT({ request, params }) {
   const ownerIds = Array.isArray(owner_client_ids) ? owner_client_ids.map(toInt).filter((v) => v !== null) : [];
   const primaryId = toInt(primary_owner_client_id) ?? (ownerIds.length > 0 ? ownerIds[0] : null);
 
+  // 현재 활성 소유자와 비교해서 "실제로 소유자를 바꾸려는 건지" 먼저 확인
+  const currentActive = await sql`
+    SELECT client_id FROM property_owners WHERE property_id = ${id} AND removed_at IS NULL
+  `;
+  const currentActiveIds = currentActive.map((r) => r.client_id);
+  const sortedCurrent = [...currentActiveIds].sort((a, b) => a - b);
+  const sortedNext = [...ownerIds].sort((a, b) => a - b);
+  const ownerSetChanged =
+    sortedCurrent.length !== sortedNext.length || sortedCurrent.some((v, i) => v !== sortedNext[i]);
+
+  if (ownerSetChanged) {
+    const [{ count }] = await sql`
+      SELECT COUNT(*)::int AS count FROM contracts
+      WHERE property_id = ${id} AND is_deleted = FALSE
+        AND (balance_date IS NULL OR balance_date >= now())
+    `;
+    if (count > 0) {
+      return new Response(
+        JSON.stringify({ error: `이 매물에 진행 중인 계약이 ${count}건 있어 소유자를 변경할 수 없습니다. 계약이 완료되거나 삭제된 후 다시 시도해주세요.` }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   const [row] = await sql`
     UPDATE properties SET
       property_name = ${property_name}, property_type = ${property_type},
@@ -102,13 +144,30 @@ export async function PUT({ request, params }) {
     return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
 
-  // 소유자 목록 전체 교체 (기존 것 지우고 새로 등록된 목록으로)
-  await sql`DELETE FROM property_owners WHERE property_id = ${id}`;
-  for (const cid of ownerIds) {
+  // 소유자 목록 갱신: 지우지 않고 "제외(removed_at)" 처리해서 이력을 남김. 다시 추가되면 재활성화.
+  // (currentActiveIds는 위에서 이미 조회함)
+  const toRemove = currentActiveIds.filter((cid) => !ownerIds.includes(cid));
+  for (const cid of toRemove) {
+    await sql`
+      UPDATE property_owners SET removed_at = now()
+      WHERE property_id = ${id} AND client_id = ${cid} AND removed_at IS NULL
+    `;
+  }
+
+  const toAdd = ownerIds.filter((cid) => !currentActiveIds.includes(cid));
+  for (const cid of toAdd) {
     await sql`
       INSERT INTO property_owners (property_id, client_id, is_primary)
       VALUES (${id}, ${cid}, ${cid === primaryId})
-      ON CONFLICT DO NOTHING
+      ON CONFLICT (property_id, client_id) DO UPDATE SET removed_at = NULL, is_primary = ${cid === primaryId}
+    `;
+  }
+
+  // 계속 유지되는 소유자들의 대표(주 계약자) 표시도 최신 지정대로 갱신
+  if (ownerIds.length > 0) {
+    await sql`
+      UPDATE property_owners SET is_primary = (client_id = ${primaryId})
+      WHERE property_id = ${id} AND removed_at IS NULL
     `;
   }
 

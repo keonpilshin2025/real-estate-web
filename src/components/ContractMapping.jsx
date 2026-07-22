@@ -43,12 +43,13 @@ function formatDongHo(dong, ho) {
 }
 
 // 잔금일시 오름차순 정렬 (빠른 날짜가 먼저, 날짜 없는 계약은 맨 뒤로)
-function sortByBalanceDate(list) {
+function sortByBalanceDate(list, dir = "asc") {
   return [...list].sort((a, b) => {
     if (!a.balance_date && !b.balance_date) return 0;
     if (!a.balance_date) return 1;
     if (!b.balance_date) return -1;
-    return new Date(a.balance_date) - new Date(b.balance_date);
+    const diff = new Date(a.balance_date) - new Date(b.balance_date);
+    return dir === "asc" ? diff : -diff;
   });
 }
 
@@ -158,6 +159,8 @@ const emptyForm = {
 export default function ContractMapping() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [balanceSortDir, setBalanceSortDir] = useState("asc");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -186,10 +189,22 @@ export default function ContractMapping() {
 
   async function fetchContracts() {
     setLoading(true);
-    const res = await fetch("/api/contracts");
+    const params = new URLSearchParams({ q });
+    const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
-    setContracts(sortByBalanceDate(Array.isArray(data) ? data : []));
+    setContracts(sortByBalanceDate(Array.isArray(data) ? data : [], balanceSortDir));
     setLoading(false);
+  }
+
+  function toggleBalanceSort() {
+    const next = balanceSortDir === "asc" ? "desc" : "asc";
+    setBalanceSortDir(next);
+    setContracts((prev) => sortByBalanceDate(prev, next));
+  }
+
+  function handleSearch(e) {
+    e.preventDefault();
+    fetchContracts();
   }
 
   async function fetchAgencies() {
@@ -454,8 +469,17 @@ export default function ContractMapping() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap justify-end gap-2">
+      <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap gap-2 items-center">
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="매물명/동/호수/고객명 검색"
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
+        />
+        <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
         <button
+          type="button"
           onClick={handleExportExcel}
           disabled={exporting}
           className="border border-slate-200 text-slate-600 rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 whitespace-nowrap shrink-0"
@@ -463,12 +487,13 @@ export default function ContractMapping() {
           {exporting ? "다운로드 중..." : "엑셀 다운로드"}
         </button>
         <button
+          type="button"
           onClick={() => setShowForm(true)}
           className="bg-slate-900 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-slate-800 whitespace-nowrap shrink-0"
         >
           + 계약 등록
         </button>
-      </div>
+      </form>
 
       <p className="text-slate-400 text-xs px-1">
         수정 버튼을 누르시면 계약 당시의 주소를 확인할 수 있어요.
@@ -485,7 +510,11 @@ export default function ContractMapping() {
               <th className="px-4 py-3 font-medium">고객명</th>
               <th className="px-4 py-3 font-medium">역할</th>
               <th className="px-4 py-3 font-medium">잔금</th>
-              <th className="px-4 py-3 font-medium">잔금일시</th>
+              <th className="px-4 py-3 font-medium">
+                <button onClick={toggleBalanceSort} className="flex items-center gap-1 hover:text-slate-700">
+                  잔금일시 <span className="text-slate-400">{balanceSortDir === "asc" ? "▲" : "▼"}</span>
+                </button>
+              </th>
               <th className="px-4 py-3 font-medium">계약만료일</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>

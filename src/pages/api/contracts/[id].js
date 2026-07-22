@@ -44,21 +44,30 @@ export async function PUT({ request, params }) {
   const partnerAgencyIdInt = toInt(partner_agency_id);
   const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
 
-  // 매도(임대)인 주소 스냅샷 재계산 (수정 시점 기준으로 다시 고정)
+  // 매도(임대)인 이름/연락처/주소 스냅샷 재계산 (수정 시점 기준으로 다시 고정)
   const isSeller = client_role === "매도인" || client_role === "임대인";
+  let sellerNameSnapshot = null;
+  let sellerPhoneSnapshot = null;
   let sellerAddressSnapshot = null;
+  let sellerClientIdSnapshot = null;
   if (isSeller) {
-    const [c] = await sql`SELECT address FROM clients WHERE id = ${client_id}`;
+    const [c] = await sql`SELECT name, phone, address FROM clients WHERE id = ${client_id}`;
+    sellerNameSnapshot = c?.name || null;
+    sellerPhoneSnapshot = c?.phone || null;
     sellerAddressSnapshot = c?.address || null;
+    sellerClientIdSnapshot = client_id;
   } else {
     const [p] = await sql`
-      SELECT oc.address FROM property_owners po
+      SELECT oc.id, oc.name, oc.phone, oc.address FROM property_owners po
       JOIN clients oc ON oc.id = po.client_id
-      WHERE po.property_id = ${property_id}
-      ORDER BY po.id
+      WHERE po.property_id = ${property_id} AND po.removed_at IS NULL
+      ORDER BY po.is_primary DESC, po.id
       LIMIT 1
     `;
+    sellerNameSnapshot = p?.name || null;
+    sellerPhoneSnapshot = p?.phone || null;
     sellerAddressSnapshot = p?.address || null;
+    sellerClientIdSnapshot = p?.id || null;
   }
 
   // 매수(임차)인 주소 스냅샷 재계산
@@ -90,6 +99,9 @@ export async function PUT({ request, params }) {
         deal_status = ${deal_status || "진행"},
         seller_address_snapshot = ${sellerAddressSnapshot},
         buyer_address_snapshot = ${buyerAddressSnapshot},
+        seller_name_snapshot = ${sellerNameSnapshot},
+        seller_phone_snapshot = ${sellerPhoneSnapshot},
+        seller_client_id_snapshot = ${sellerClientIdSnapshot},
         updated_at = now()
       WHERE id = ${id}
       RETURNING *

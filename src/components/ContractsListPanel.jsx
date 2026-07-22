@@ -47,6 +47,8 @@ function isBuyerSide(role) {
 
 function sellerDisplayName(c) {
   if (isSellerSide(c.client_role)) return c.client_name;
+  // 계약 당시 스냅샷이 있으면 그걸 우선 사용 (소유자가 나중에 바뀌어도 안 바뀜)
+  if (c.seller_name_snapshot) return c.seller_name_snapshot;
   const owners = c.property_owners || [];
   if (owners.length === 0) return c.property_owner_name || null;
   if (owners.length === 1) return owners[0].name;
@@ -54,9 +56,10 @@ function sellerDisplayName(c) {
 }
 
 // 매도(임대)인 클릭 시 열어줄 고객 id: 계약에 직접 매도/임대 역할로 등록됐으면 그 고객,
-// 매물에 연동된 소유자가 1명이면 그 고객, 공동명의(2명 이상)면 개별 지정 불가하므로 null(매물 팝업으로 폴백)
+// 아니면 계약 당시 스냅샷에 저장된 고객id(있으면), 없으면(과거 데이터) 매물에 연동된 소유자가 1명일 때만 그 고객
 function sellerClientId(c) {
   if (isSellerSide(c.client_role)) return c.client_id;
+  if (c.seller_client_id_snapshot) return c.seller_client_id_snapshot;
   const owners = c.property_owners || [];
   return owners.length === 1 ? owners[0].id : null;
 }
@@ -172,6 +175,7 @@ const EXCEL_COLUMNS = [
 ];
 
 export default function ContractsListPanel() {
+  const [baseContracts, setBaseContracts] = useState([]); // 서버에서 받아 dedupe만 적용한 원본
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -181,15 +185,49 @@ export default function ContractsListPanel() {
   const [openContractId, setOpenContractId] = useState(null);
   const [openAgencyId, setOpenAgencyId] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [sortField, setSortField] = useState(null); // null(기본: 진행상태 우선) | "balance_date" | "move_in_date"
+  const [sortDir, setSortDir] = useState("asc");
+
+  function applySort(list) {
+    if (!sortField) return sortByStatusThenBalanceDate(list);
+    return [...list].sort((a, b) => {
+      const av = a[sortField];
+      const bv = b[sortField];
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      const diff = new Date(av) - new Date(bv);
+      return sortDir === "asc" ? diff : -diff;
+    });
+  }
+
+  function toggleSort(field) {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortField(null); // 세 번째 클릭 시 기본 정렬(진행상태 우선)로 복귀
+      setSortDir("asc");
+    }
+  }
 
   async function fetchContracts() {
     setLoading(true);
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
-    setContracts(sortByStatusThenBalanceDate(dedupeCompletedByClient(Array.isArray(data) ? data : [])));
+    const deduped = dedupeCompletedByClient(Array.isArray(data) ? data : []);
+    setBaseContracts(deduped);
+    setContracts(applySort(deduped));
     setLoading(false);
   }
+
+  useEffect(() => {
+    setContracts(applySort(baseContracts));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortField, sortDir]);
 
   useEffect(() => { fetchContracts(); }, []);
 
@@ -218,7 +256,7 @@ export default function ContractsListPanel() {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="매물명/고객명 검색"
+          placeholder="매물명/동/호수/고객명 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
@@ -233,7 +271,7 @@ export default function ContractsListPanel() {
       </form>
 
       <p className="text-slate-400 text-xs px-1">
-        전세·월세 계약 중 완료 건은 고객별로 가장 최근 1건만 표시돼요.
+        전세·월세 계약 중 완료 건은 고객별로 가장 최근 1건만 표시돼요. 잔금일시·계약만료일 헤더를 누르면 정렬을 바꿀 수 있어요.
       </p>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
@@ -246,8 +284,22 @@ export default function ContractsListPanel() {
               <th className="px-4 py-3 font-medium">중개유형</th>
               <th className="px-4 py-3 font-medium">매도(임대)인</th>
               <th className="px-4 py-3 font-medium">매수(임차)인</th>
-              <th className="px-4 py-3 font-medium">잔금일시</th>
-              <th className="px-4 py-3 font-medium">계약만료일</th>
+              <th className="px-4 py-3 font-medium">
+                <button onClick={() => toggleSort("balance_date")} className="flex items-center gap-1 hover:text-slate-700">
+                  잔금일시
+                  <span className="text-slate-400">
+                    {sortField === "balance_date" ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                  </span>
+                </button>
+              </th>
+              <th className="px-4 py-3 font-medium">
+                <button onClick={() => toggleSort("move_in_date")} className="flex items-center gap-1 hover:text-slate-700">
+                  계약만료일
+                  <span className="text-slate-400">
+                    {sortField === "move_in_date" ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                  </span>
+                </button>
+              </th>
               <th className="px-4 py-3 font-medium">거래상태</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>

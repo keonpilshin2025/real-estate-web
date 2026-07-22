@@ -22,7 +22,7 @@ export async function GET({ request }) {
           SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
           FROM property_owners po
           JOIN clients oc ON oc.id = po.client_id
-          WHERE po.property_id = p.id
+          WHERE po.property_id = p.id AND po.removed_at IS NULL
         ),
         '[]'
       ) AS owners
@@ -66,6 +66,28 @@ export async function POST({ request }) {
     return new Response(JSON.stringify({ error: "매물명과 매물구분은 필수입니다." }), { status: 400 });
   }
 
+  // 중복 매물 체크: 동/호수가 있으면 매물명+동+호수 일치, 없으면(상가/기타 등) 매물명+주소 일치로 판단
+  const dupRows = dong && ho
+    ? await sql`
+        SELECT id FROM properties
+        WHERE property_name = ${property_name} AND dong = ${dong} AND ho = ${ho}
+        LIMIT 1
+      `
+    : address
+      ? await sql`
+          SELECT id FROM properties
+          WHERE property_name = ${property_name} AND address = ${address}
+          LIMIT 1
+        `
+      : [];
+
+  if (dupRows.length > 0) {
+    return new Response(
+      JSON.stringify({ error: "이미 등록된 매물입니다 (같은 매물명·동·호수). 매물 탭에서 검색 후 필요하면 그 매물을 수정해주세요." }),
+      { status: 409, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
   const ownerIds = Array.isArray(owner_client_ids) ? owner_client_ids.map(toInt).filter((v) => v !== null) : [];
   const primaryId = toInt(primary_owner_client_id) ?? (ownerIds.length > 0 ? ownerIds[0] : null);
@@ -86,7 +108,7 @@ export async function POST({ request }) {
     await sql`
       INSERT INTO property_owners (property_id, client_id, is_primary)
       VALUES (${row.id}, ${cid}, ${cid === primaryId})
-      ON CONFLICT DO NOTHING
+      ON CONFLICT (property_id, client_id) DO UPDATE SET removed_at = NULL, is_primary = ${cid === primaryId}
     `;
   }
 
