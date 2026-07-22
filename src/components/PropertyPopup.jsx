@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AgencySelect from "./AgencySelect.jsx";
 
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
@@ -266,11 +267,11 @@ export default function PropertyPopup({ propertyId, onClose, onSaved }) {
                 <input value={form.usage_type || ""} onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
                   placeholder="사용유형 (상가만)" className="border border-slate-200 rounded-lg h-9 px-3" />
 
-                <select value={form.partner_agency_id || ""} onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
-                  className="border border-slate-200 rounded-lg h-9 px-3">
-                  <option value="">물건지부동산 없음 (단독중개)</option>
-                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>)}
-                </select>
+                <AgencySelect
+                  agencies={agencies}
+                  value={form.partner_agency_id || ""}
+                  onChange={(v) => setForm({ ...form, partner_agency_id: v })}
+                />
 
                 <label className="text-slate-400 -mb-1">매도자(임대인) 고객 검색</label>
                 <div className="relative">

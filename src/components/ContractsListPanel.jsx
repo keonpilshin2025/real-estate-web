@@ -66,6 +66,39 @@ function computeDealStatus(status, balanceDate) {
   return status || "진행";
 }
 
+// 대상 날짜가 "오늘 ~ 현재일+days일" 사이(미래, 아직 안 지난 날짜)인지
+function isWithinDays(dateStr, days) {
+  if (!dateStr) return false;
+  const target = new Date(dateStr);
+  if (isNaN(target.getTime())) return false;
+  const now = Date.now();
+  const threshold = new Date();
+  threshold.setDate(threshold.getDate() + days);
+  return target.getTime() >= now && target.getTime() <= threshold.getTime();
+}
+
+// 대상 날짜가 "오늘 ~ 현재일+months개월" 사이(미래, 아직 안 지난 날짜)인지
+function isWithinMonths(dateStr, months) {
+  if (!dateStr) return false;
+  const target = new Date(dateStr);
+  if (isNaN(target.getTime())) return false;
+  const now = Date.now();
+  const threshold = new Date();
+  threshold.setMonth(threshold.getMonth() + months);
+  return target.getTime() >= now && target.getTime() <= threshold.getTime();
+}
+
+function balanceDateClass(balanceDate) {
+  return isWithinDays(balanceDate, 15) ? "font-bold text-slate-800" : "text-slate-600";
+}
+
+// 계약만료일: 현재일+1개월 이내면 굵은 빨간색, 현재일+3개월 이내면 굵은 파란색 (이미 지난 날짜는 강조 안 함)
+function expiryDateClass(moveInDate) {
+  if (isWithinMonths(moveInDate, 1)) return "font-bold text-red-600";
+  if (isWithinMonths(moveInDate, 3)) return "font-bold text-blue-600";
+  return "text-slate-600";
+}
+
 function DealStatusBadge({ status, balanceDate }) {
   const s = computeDealStatus(status, balanceDate);
   const cls =
@@ -247,10 +280,10 @@ export default function ContractsListPanel() {
                       <span className="text-slate-400">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className={`px-4 py-3 ${balanceDateClass(c.balance_date)}`}>
                     {c.balance_date ? String(c.balance_date).slice(0, 16).replace("T", " ") : "-"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className={`px-4 py-3 ${expiryDateClass(c.move_in_date)}`}>
                     {c.move_in_date ? String(c.move_in_date).slice(0, 10) : "-"}
                   </td>
                   <td className="px-4 py-3">

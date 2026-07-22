@@ -3,6 +3,7 @@ import ContractPopup from "./ContractPopup.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
 import ClientPopup from "./ClientPopup.jsx";
 import PartnerAgencyPopup from "./PartnerAgencyPopup.jsx";
+import AgencySelect from "./AgencySelect.jsx";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
 const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
@@ -136,11 +137,13 @@ function DateTime10Input({ value, onChange }) {
 }
 
 // 계약만료일 기본값 = 잔금일(입주일) + 2년
+// 계약만료일 기본값 = 잔금일(입주일) + 2년 - 1일
 function calcExpiry2Years(balanceDate) {
   if (!balanceDate) return null;
   const d = new Date(balanceDate);
   if (isNaN(d.getTime())) return null;
   d.setFullYear(d.getFullYear() + 2);
+  d.setDate(d.getDate() - 1);
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
@@ -635,16 +638,12 @@ export default function ContractMapping() {
                   {brokerageType}
                 </span>
               </label>
-              <select
+              <AgencySelect
+                agencies={agencies}
                 value={form.partner_agency_id}
-                onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              >
-                <option value="">없음 (단독중개)</option>
-                {agencies.map((a) => (
-                  <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, partner_agency_id: v })}
+                className="col-span-2"
+              />
 
               {blockingRows.length > 0 && (
                 <div className="col-span-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 flex gap-2 items-start">

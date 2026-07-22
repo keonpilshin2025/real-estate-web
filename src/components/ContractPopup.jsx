@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AgencySelect from "./AgencySelect.jsx";
 
 const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
 const CONTRACT_TYPES = ["매매", "전세", "월세"];
@@ -86,6 +87,7 @@ function calcExpiry2Years(balanceDate) {
   const d = new Date(balanceDate);
   if (isNaN(d.getTime())) return null;
   d.setFullYear(d.getFullYear() + 2);
+  d.setDate(d.getDate() - 1);
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
@@ -224,11 +226,11 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                     {brokerageType}
                   </span>
                 </label>
-                <select value={form.partner_agency_id || ""} onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
-                  className="border border-slate-200 rounded-lg h-9 px-3">
-                  <option value="">없음 (단독중개)</option>
-                  {agencies.map((a) => <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>)}
-                </select>
+                <AgencySelect
+                  agencies={agencies}
+                  value={form.partner_agency_id || ""}
+                  onChange={(v) => setForm({ ...form, partner_agency_id: v })}
+                />
 
                 <select value={form.contract_type} onChange={(e) => handleContractTypeChange(e.target.value)}
                   className="border border-slate-200 rounded-lg h-9 px-3">

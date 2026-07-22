@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
 import AddressField from "./AddressField.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
+import AgencySelect from "./AgencySelect.jsx";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
 const PROPERTY_TYPES = ["아파트", "빌라", "오피스텔", "상가", "기타"];
@@ -436,16 +437,12 @@ export default function PropertiesPanel() {
               />
 
               <label className="text-slate-400 col-span-2 -mb-1">중개유형 (공동중개 시 부동산 선택)</label>
-              <select
+              <AgencySelect
+                agencies={agencies}
                 value={form.partner_agency_id}
-                onChange={(e) => setForm({ ...form, partner_agency_id: e.target.value })}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              >
-                <option value="">없음 (단독중개)</option>
-                {agencies.map((a) => (
-                  <option key={a.id} value={a.id}>{a.agency_name}{a.address ? ` · ${a.address}` : ""}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, partner_agency_id: v })}
+                className="col-span-2"
+              />
 
               <label className="text-slate-400 col-span-2 -mb-1">
                 매도자(임대인) 고객 검색 <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span>
