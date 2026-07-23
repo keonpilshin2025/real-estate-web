@@ -283,7 +283,7 @@ export default function ClientsPanel() {
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
 
-              <label className="text-slate-400 col-span-2 -mb-1">희망 조건</label>
+              <label className="text-slate-400 col-span-2 -mb-1">희망 조건 (매수/임차 희망 시만 작성)</label>
               <select
                 value={form.transaction_type}
                 onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
@@ -301,7 +301,7 @@ export default function ClientsPanel() {
                 {BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
 
-              <label className="text-slate-400 col-span-2 -mb-1">희망입주월</label>
+              <label className="text-slate-400 col-span-2 -mb-1">희망입주월 (매수/임차 희망 시만 작성)</label>
               <input
                 type="month"
                 value={form.desired_move_in_month}

@@ -363,7 +363,11 @@ export default function PropertyPopup({ propertyId, contractClientId, onClose, o
                     placeholder="호수" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
                 </div>
                 <input value={form.unit_type || ""} onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
-                  placeholder="평형" className="border border-slate-200 rounded-lg h-9 px-3" />
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (/^\d+(\.\d+)?$/.test(v)) setForm((f) => ({ ...f, unit_type: v + "평" }));
+                  }}
+                  placeholder="평형 (숫자만 입력하면 자동으로 '평' 붙어요)" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <input value={form.usage_type || ""} onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
                   placeholder="사용유형 (상가만)" className="border border-slate-200 rounded-lg h-9 px-3" />
 

@@ -6,7 +6,7 @@ import PartnerAgencyPopup from "./PartnerAgencyPopup.jsx";
 import AgencySelect from "./AgencySelect.jsx";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
 
-const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
+const CLIENT_ROLES = ["매수인", "임차인"]; // 매도(임대)인은 매물에 연결된 소유자에서 자동 연결됨
 const CONTRACT_TYPES = ["매매", "전세", "월세"];
 const DEAL_STATUSES = ["대기", "진행", "완료"];
 const EOK = 100000000;
@@ -628,7 +628,7 @@ export default function ContractMapping() {
                 }}
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               >
-                <option value="">고객 구분 (매도/매수 등) 선택 *</option>
+                <option value="">고객 구분 (매수인/임차인) 선택 *</option>
                 {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
 

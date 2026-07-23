@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import AgencySelect from "./AgencySelect.jsx";
 
-const CLIENT_ROLES = ["매도인", "매수인", "임대인", "임차인"];
 const CONTRACT_TYPES = ["매매", "전세", "월세"];
 const DEAL_STATUSES = ["대기", "진행", "완료"];
 const EOK = 100000000;
@@ -30,6 +29,14 @@ function isBalancePassed(balanceDate) {
   if (!balanceDate) return false;
   const d = new Date(balanceDate);
   return !isNaN(d.getTime()) && d.getTime() <= Date.now();
+}
+
+// 잔금일시로부터 며칠 지났는지 (아직 안 지났으면 null)
+function daysSinceBalance(balanceDate) {
+  if (!balanceDate) return null;
+  const d = new Date(balanceDate);
+  if (isNaN(d.getTime()) || d.getTime() > Date.now()) return null;
+  return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function EokManInput({ value, onChange, readOnly }) {
@@ -139,6 +146,12 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
   }
 
   async function handleSave() {
+    const statusNow = computeDealStatus(data.deal_status, data.balance_date);
+    if (statusNow === "완료") {
+      const ok = confirm("이 계약은 이미 완료된 건이에요. 그래도 수정하시겠습니까?");
+      if (!ok) return;
+    }
+
     setSaving(true);
     const res = await fetch(`/api/contracts/${contractId}`, {
       method: "PUT",
@@ -196,10 +209,23 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                   <Row label="계약만료일" value={formatDateOnly(data.move_in_date) || "-"} />
                 )}
                 <Row label="비고" value={data.memo} multiline />
-                <div className="flex justify-end gap-2 mt-3">
-                  <button onClick={() => setEditing(true)} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500">
-                    수정하기
-                  </button>
+                <div className="flex justify-end items-center gap-2 mt-3">
+                  {(() => {
+                    const days = daysSinceBalance(data.balance_date);
+                    const editLocked = days !== null && days > 15;
+                    if (editLocked) {
+                      return (
+                        <span className="text-slate-400">
+                          잔금일로부터 15일이 지나 수정할 수 없어요 (조회만 가능)
+                        </span>
+                      );
+                    }
+                    return (
+                      <button onClick={() => setEditing(true)} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500">
+                        수정하기
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (
@@ -208,10 +234,12 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                   매물: {data.property_name} {data.property_dong} {data.property_ho} · 고객: {data.client_name}
                 </div>
 
-                <select value={form.client_role} onChange={(e) => setForm({ ...form, client_role: e.target.value })}
-                  className="border border-slate-200 rounded-lg h-9 px-3">
-                  {CLIENT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
+                <div>
+                  <span className="text-slate-400">역할 (등록 시 정해짐, 변경 불가)</span>
+                  <div className="border border-slate-200 rounded-lg h-9 px-3 flex items-center bg-slate-50 text-slate-600 font-medium mt-1">
+                    {form.client_role}
+                  </div>
+                </div>
 
                 <span className="text-slate-400">거래상태</span>
                 {balancePassed ? (

@@ -611,9 +611,13 @@ export default function PropertiesPanel() {
                 </select>
               ) : (
                 <input
-                  placeholder="평형 (예: 30평대)"
+                  placeholder="평형 (예: 30평대, 숫자만 입력하면 자동으로 '평' 붙어요)"
                   value={form.unit_type}
                   onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (/^\d+(\.\d+)?$/.test(v)) setForm((f) => ({ ...f, unit_type: v + "평" }));
+                  }}
                   className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
                 />
               )}
