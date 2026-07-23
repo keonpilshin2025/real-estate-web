@@ -8,49 +8,49 @@ import "../styles/global.css";
 
 export interface Props {
   title: string;
+  description?: string;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
-
 const resolvedImageWithDomain = new URL(
   "/opengraph.jpg",
   Astro.site
 ).toString();
 
-const { title } = Astro.props;
+const { title, description } = Astro.props;
+
+// 사이트 기본 설명 (개별 페이지에서 description을 안 넘기면 이걸 씀)
+// 여기에 실제로 검색되길 원하는 단지명/지역명을 자연스럽게 넣어두면 검색엔진이 읽어가요.
+const DEFAULT_DESCRIPTION =
+  "내 집을 사고파는 마음으로, 정직과 신뢰로 모시겠습니다. 여수동 센트럴타운, 연꽃마을4단지, 산들마을2단지 매매·전세·월세는 센트럴공인중개사에서.";
 
 const makeTitle = title
-  ? title + " | " + "Astroship"
-  : "Astroship - Starter Template for Astro with Tailwind CSS";
----
+  ? `${title} | 센트럴공인중개사`
+  : "센트럴공인중개사 | 여수동 센트럴타운·연꽃마을4단지·산들마을2단지 부동산";
 
+const makeDescription = description || DEFAULT_DESCRIPTION;
+---
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-
     <!-- <link rel="preload" as="image" href={src} alt="Hero" /> -->
     <SEO
       title={makeTitle}
-      description="여수동 센트럴공인중개사 사무소"
+      description={makeDescription}
       canonical={canonicalURL}
-      twitter={{
-        creator: "@surjithctly",
-        site: "@web3templates",
-        card: "summary_large_image",
-      }}
       openGraph={{
         basic: {
           url: canonicalURL,
           type: "website",
-          title: `여수동 센트럴공인중개사 사무소`,
+          title: makeTitle,
           image: resolvedImageWithDomain,
         },
         image: {
-          alt: "Astroship Homepage Screenshot",
+          alt: "센트럴공인중개사 사무소",
         },
       }}
     />

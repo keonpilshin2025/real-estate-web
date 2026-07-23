@@ -9,7 +9,6 @@ import Hero from "../components/Hero.jsx";
 import QuickMenu from "../components/QuickMenu.jsx";
 import InquiryForm from "../components/InquiryForm.jsx";
 import ReviewCard from "../components/ReviewCard.jsx";
-import VisitReservationButton from "../components/VisitReservationButton.jsx";
 
 const siteName = "센트럴공인중개사 사무소";
 const ceoName = "박은미";
@@ -85,30 +84,32 @@ const regNo = "41133-2020-00049";
     });
   });
 </script>
-<Layout title="여수동 센트럴공인중개사 사무소">
+<Layout
+  title="여수동 부동산 센트럴공인중개사"
+  description="내 집을 사고파는 마음으로, 정직과 신뢰로 모시겠습니다. 여수동 센트럴타운·연꽃마을4단지·산들마을2단지 매매·전세·월세는 센트럴공인중개사에서."
+>
   <Container>
-	<header class="flex flex-col lg:flex-row justify-between items-center my-5 gap-3">
-    <div class="flex w-full lg:w-auto items-center justify-between">
-        <a href="/" class="text-lg flex items-center">
-        <span class="font-bold text-slate-800 text-2xl">센트럴공인중개사</span>
-        </a>
-        <div class="lg:hidden">
-            <VisitReservationButton client:load />
-        </div>
-    </div>
+	<header class="flex flex-col lg:flex-row justify-between items-center my-5">
+		<div class="flex w-full lg:w-auto items-center justify-between">
+			<a href="/" class="text-lg flex items-center">
+			<span class="font-bold text-slate-800 text-2xl">센트럴공인중개사 사무소</span>
+			</a>
+		</div>
 
-    <div class="hidden lg:flex items-center gap-6">
-        <!-- 비즈니스 정보 배치 -->
-        <div class="flex flex-col items-end">
-        <span class="text-[10px] text-slate-400 uppercase tracking-widest">Consulting</span>
-        <a href="tel:031-721-0082" class="text-xl font-bold text-slate-800 hover:text-violet-500 transition">
-            031-721-0082
-        </a>
-        </div>
-        <!-- 강조된 버튼 -->
-        <VisitReservationButton client:load />
-    </div>
-    </header>
+		<div class="hidden lg:flex items-center gap-6">
+			<!-- 비즈니스 정보 배치 -->
+			<div class="flex flex-col items-end">
+			<span class="text-[10px] text-slate-400 uppercase tracking-widest">Consulting</span>
+			<a href="tel:031-721-0082" class="text-xl font-bold text-slate-800 hover:text-violet-500 transition">
+				031-721-0082
+			</a>
+			</div>
+			<!-- 강조된 버튼 -->
+			<a href="#contact" class="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition">
+			방문 예약하기
+			</a>
+		</div>
+		</header>
 
     <main class="mt-16">
       <!-- 히어로: 새 디자인 (그라디언트 + 급매물/전화 CTA + 네이버 링크 내장) -->
@@ -225,9 +226,9 @@ const regNo = "41133-2020-00049";
 					<p class="mb-2"><span class="text-slate-800 font-medium">대표자:</span> {ceoName}</p>
 					<p class="mb-2"><span class="text-slate-800 font-medium">등록번호:</span> {regNo}</p>
 					<p class="mb-2"><span class="text-slate-800 font-medium">대표번호:</span> {contact}</p>
-					<p class="mb-2"><span class="text-slate-800 font-medium">사무실 주소:</span> {address}</p>
+					<p  class="mb-2"><span class="text-slate-800 font-medium">사무실 주소:</span> {address}</p>
 					<p class="mb-2"><span class="text-slate-800 font-medium">경제 정보 채널:</span> <a href="https://t.me/centralpem" target="_blank" class="text-violet-500 hover:text-violet-600 transition-colors">텔레그램 바로가기</a></p>
-					<p><span class="text-slate-800 font-medium">경제 정보 블로그:</span> <a href="https://www.ezbiztok.com/" target="_blank" class="text-violet-500 hover:text-violet-600 transition-colors">블로그 바로가기</a></p>
+					<p><span class="text-slate-800 font-medium">경제 정보 블로그:</span> <a href="https://ezbotmon.blogspot.com/" target="_blank" class="text-violet-500 hover:text-violet-600 transition-colors">블로그 바로가기</a></p>
 				</div>
 			</div>
 			<div class="pt-8 border-t border-violet-200 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500">
