@@ -134,6 +134,7 @@ export default function ClientPopup({ clientId, onClose, onSaved }) {
                   className="border border-slate-200 rounded-lg h-9 px-3"
                 />
 
+                <p className="text-slate-400 -mb-1">희망 조건 (매수/임차 희망 시만 작성)</p>
                 <select value={form.transaction_type || ""} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                   className="border border-slate-200 rounded-lg h-9 px-3">
                   <option value="">거래유형 선택</option>
