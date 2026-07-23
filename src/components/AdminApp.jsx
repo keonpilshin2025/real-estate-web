@@ -7,10 +7,10 @@ import ContractsListPanel from "./ContractsListPanel.jsx";
 
 const TABS = [
   { key: "overview", label: "목록" },
-  { key: "agencies", label: "부동산" },
-  { key: "properties", label: "매물" },
   { key: "clients", label: "고객" },
+  { key: "properties", label: "매물" },
   { key: "contracts", label: "계약" },
+  { key: "agencies", label: "부동산" },
 ];
 
 export default function AdminApp() {
@@ -35,10 +35,10 @@ export default function AdminApp() {
       </div>
 
       {tab === "overview" && <ContractsListPanel />}
-      {tab === "agencies" && <PartnerAgenciesPanel />}
-      {tab === "properties" && <PropertiesPanel />}
       {tab === "clients" && <ClientsPanel />}
+      {tab === "properties" && <PropertiesPanel />}
       {tab === "contracts" && <ContractMapping />}
+      {tab === "agencies" && <PartnerAgenciesPanel />}
     </div>
   );
 }
