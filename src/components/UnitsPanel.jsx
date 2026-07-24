@@ -308,9 +308,13 @@ export default function UnitsPanel() {
                 </select>
               ) : (
                 <input
-                  placeholder="동 (예: 101동)"
+                  placeholder="동 (숫자만 입력하면 자동으로 '동' 붙어요)"
                   value={form.dong}
                   onChange={(e) => setForm({ ...form, dong: e.target.value })}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && !v.endsWith("동")) setForm((f) => ({ ...f, dong: v + "동" }));
+                  }}
                   className="border border-slate-200 rounded-lg h-9 px-3"
                 />
               )}
