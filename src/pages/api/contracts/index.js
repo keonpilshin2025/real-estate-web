@@ -9,35 +9,44 @@ export async function GET({ request }) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || "";
 
-  const rows = await sql`
-    SELECT
-      c.*,
-      u.property_name, u.dong AS property_dong, u.ho AS property_ho, u.unit_type AS property_unit_type,
-      COALESCE(
-        (
-          SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
-          FROM property_owners po
-          JOIN clients oc ON oc.id = po.client_id
-          WHERE po.property_id = p.id AND po.removed_at IS NULL
-        ),
-        '[]'
-      ) AS property_owners,
-      cl.name AS client_name, cl.phone AS client_phone,
-      pa.agency_name AS partner_agency_name
-    FROM contracts c
-    JOIN properties p ON p.id = c.property_id
-    JOIN real_estate_units u ON u.id = p.unit_id
-    JOIN clients cl ON cl.id = c.client_id
-    LEFT JOIN partner_agencies pa ON pa.id = c.partner_agency_id
-    WHERE c.is_deleted = FALSE
-      AND (${q} = '' OR u.property_name ILIKE ${'%' + q + '%'} OR u.dong ILIKE ${'%' + q + '%'} OR u.ho ILIKE ${'%' + q + '%'} OR cl.name ILIKE ${'%' + q + '%'} OR c.seller_name_snapshot ILIKE ${'%' + q + '%'})
-    ORDER BY c.created_at DESC
-  `;
+  try {
+    const rows = await sql`
+      SELECT
+        c.*,
+        u.property_name, u.dong AS property_dong, u.ho AS property_ho, u.unit_type AS property_unit_type,
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
+            FROM property_owners po
+            JOIN clients oc ON oc.id = po.client_id
+            WHERE po.property_id = p.id AND po.removed_at IS NULL
+          ),
+          '[]'
+        ) AS property_owners,
+        cl.name AS client_name, cl.phone AS client_phone,
+        pa.agency_name AS partner_agency_name
+      FROM contracts c
+      JOIN properties p ON p.id = c.property_id
+      JOIN real_estate_units u ON u.id = p.unit_id
+      JOIN clients cl ON cl.id = c.client_id
+      LEFT JOIN partner_agencies pa ON pa.id = c.partner_agency_id
+      WHERE c.is_deleted = FALSE
+        AND (${q} = '' OR u.property_name ILIKE ${'%' + q + '%'} OR u.dong ILIKE ${'%' + q + '%'} OR u.ho ILIKE ${'%' + q + '%'} OR cl.name ILIKE ${'%' + q + '%'} OR c.seller_name_snapshot ILIKE ${'%' + q + '%'})
+      ORDER BY c.created_at DESC
+    `;
 
-  return new Response(JSON.stringify(rows), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+    return new Response(JSON.stringify(rows), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    // 진단용: 실제 에러 메시지를 그대로 보여줌 (원인 파악되면 이 catch는 나중에 정리 예정)
+    console.error("GET /api/contracts failed:", e);
+    return new Response(
+      JSON.stringify({ error: e.message || String(e), name: e.name, stack: e.stack }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }
 
 // POST /api/contracts  (물건-고객 매핑 등록)
