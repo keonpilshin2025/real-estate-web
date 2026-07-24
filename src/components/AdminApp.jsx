@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PartnerAgenciesPanel from "./PartnerAgenciesPanel.jsx";
 import PropertiesPanel from "./PropertiesPanel.jsx";
 import UnitsPanel from "./UnitsPanel.jsx";
@@ -17,6 +17,22 @@ const TABS = [
 
 export default function AdminApp() {
   const [tab, setTab] = useState("overview");
+
+  // 세션이 만료돼서 API가 401을 돌려주면, 어떤 화면에서든 자동으로 로그인 페이지로 보냄
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 401) {
+        alert("로그인이 만료되었어요. 다시 로그인해주세요.");
+        window.location.href = "/admin/login";
+      }
+      return response;
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">
