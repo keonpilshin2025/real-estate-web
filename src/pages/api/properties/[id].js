@@ -13,7 +13,10 @@ export async function GET({ params, request }) {
 
   const [row] = await sql`
     SELECT
-      p.*,
+      p.id, p.unit_id, p.features, p.memo, p.transaction_type,
+      p.asking_price, p.asking_deposit, p.asking_monthly_rent,
+      p.partner_agency_id, p.created_at, p.updated_at,
+      u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
       pa.agency_name AS partner_agency_name,
       c.id AS active_contract_id,
       c.contract_type AS final_contract_type,
@@ -26,6 +29,7 @@ export async function GET({ params, request }) {
       c.seller_phone_snapshot AS final_seller_phone,
       c.seller_client_id_snapshot AS final_seller_client_id
     FROM properties p
+    JOIN real_estate_units u ON u.id = p.unit_id
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
     LEFT JOIN LATERAL (
       SELECT * FROM contracts c2
@@ -70,16 +74,13 @@ export async function GET({ params, request }) {
     ORDER BY po.created_at ASC
   `;
 
-  const { owner_ssn_encrypted, ...rest } = row;
-  const owner_ssn_masked = owner_ssn_encrypted ? await decryptToMasked(owner_ssn_encrypted, env) : null;
-
   let final_seller_ssn_masked = null;
-  if (rest.final_seller_client_id) {
-    const [fc] = await sql`SELECT ssn_encrypted FROM clients WHERE id = ${rest.final_seller_client_id}`;
+  if (row.final_seller_client_id) {
+    const [fc] = await sql`SELECT ssn_encrypted FROM clients WHERE id = ${row.final_seller_client_id}`;
     final_seller_ssn_masked = fc?.ssn_encrypted ? await decryptToMasked(fc.ssn_encrypted, env) : null;
   }
 
-  return new Response(JSON.stringify({ ...rest, owner_ssn_masked, final_seller_ssn_masked, owners: ownersSafe, owner_history: ownerHistory }), {
+  return new Response(JSON.stringify({ ...row, final_seller_ssn_masked, owners: ownersSafe, owner_history: ownerHistory }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -90,9 +91,10 @@ export async function PUT({ request, params }) {
   const id = Number(params.id);
   const body = await request.json();
 
+  // 물건 자체(단지명/동/호수/평형/주소 등)는 "물건" 탭에서만 수정합니다.
+  // 매물 수정에서는 거래 관련 정보(희망가/거래유형/소유자/특장점 등)만 다룹니다.
   const {
-    property_name, property_type, dong, ho, address,
-    unit_type, usage_type, features, memo,
+    features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
     owner_client_ids, primary_owner_client_id, partner_agency_id,
   } = body;
@@ -127,9 +129,6 @@ export async function PUT({ request, params }) {
 
   const [row] = await sql`
     UPDATE properties SET
-      property_name = ${property_name}, property_type = ${property_type},
-      dong = ${dong || null}, ho = ${ho || null}, address = ${address || null},
-      unit_type = ${unit_type || null}, usage_type = ${usage_type || null},
       features = ${features || null}, memo = ${memo || null},
       transaction_type = ${transaction_type || null},
       asking_price = ${toInt(asking_price)}, asking_deposit = ${toInt(asking_deposit)},
@@ -171,10 +170,7 @@ export async function PUT({ request, params }) {
     `;
   }
 
-  const { owner_ssn_encrypted, ...rest } = row;
-  const owner_ssn_masked = owner_ssn_encrypted ? await decryptToMasked(owner_ssn_encrypted, env) : null;
-
-  return new Response(JSON.stringify({ ...rest, owner_ssn_masked, owner_client_ids: ownerIds }), {
+  return new Response(JSON.stringify({ ...row, owner_client_ids: ownerIds }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });

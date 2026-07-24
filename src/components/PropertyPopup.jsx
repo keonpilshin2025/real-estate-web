@@ -352,24 +352,14 @@ export default function PropertyPopup({ propertyId, contractClientId, onClose, o
               </div>
             ) : (
               <div className="flex flex-col gap-2 text-xs">
-                <input value={form.property_name || ""} onChange={(e) => setForm({ ...form, property_name: e.target.value })}
-                  placeholder="매물명" className="border border-slate-200 rounded-lg h-9 px-3" />
-                <input value={form.property_type || ""} onChange={(e) => setForm({ ...form, property_type: e.target.value })}
-                  placeholder="구분 (아파트/빌라/오피스텔/상가/기타)" className="border border-slate-200 rounded-lg h-9 px-3" />
-                <div className="flex gap-2">
-                  <input value={form.dong || ""} onChange={(e) => setForm({ ...form, dong: e.target.value })}
-                    placeholder="동" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
-                  <input value={form.ho || ""} onChange={(e) => setForm({ ...form, ho: e.target.value })}
-                    placeholder="호수" className="border border-slate-200 rounded-lg h-9 px-3 flex-1" />
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <p className="font-medium text-slate-700">{data.property_name}</p>
+                  <p className="text-slate-500">
+                    {[data.property_type, data.dong, data.ho, data.unit_type].filter(Boolean).join(" · ")}
+                  </p>
+                  <p className="text-slate-400">{data.address}</p>
+                  <p className="text-slate-400 mt-1">물건 정보(단지명·동·호수·평형·주소)는 "물건" 탭에서 수정하세요.</p>
                 </div>
-                <input value={form.unit_type || ""} onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
-                  onBlur={(e) => {
-                    const v = e.target.value.trim();
-                    if (/^\d+(\.\d+)?$/.test(v)) setForm((f) => ({ ...f, unit_type: v + "평" }));
-                  }}
-                  placeholder="평형 (숫자만 입력하면 자동으로 '평' 붙어요)" className="border border-slate-200 rounded-lg h-9 px-3" />
-                <input value={form.usage_type || ""} onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
-                  placeholder="사용유형 (상가만)" className="border border-slate-200 rounded-lg h-9 px-3" />
 
                 <AgencySelect
                   agencies={agencies}

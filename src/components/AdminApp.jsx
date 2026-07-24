@@ -1,6 +1,7 @@
 import { useState } from "react";
 import PartnerAgenciesPanel from "./PartnerAgenciesPanel.jsx";
 import PropertiesPanel from "./PropertiesPanel.jsx";
+import UnitsPanel from "./UnitsPanel.jsx";
 import ClientsPanel from "./ClientsPanel.jsx";
 import ContractMapping from "./ContractMapping.jsx";
 import ContractsListPanel from "./ContractsListPanel.jsx";
@@ -8,6 +9,7 @@ import ContractsListPanel from "./ContractsListPanel.jsx";
 const TABS = [
   { key: "overview", label: "목록" },
   { key: "clients", label: "고객" },
+  { key: "units", label: "물건" },
   { key: "properties", label: "매물" },
   { key: "contracts", label: "계약" },
   { key: "agencies", label: "부동산" },
@@ -18,7 +20,7 @@ export default function AdminApp() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-1.5 flex gap-1.5 w-fit shadow-sm">
+      <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-1.5 flex gap-1.5 w-fit shadow-sm flex-wrap">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -36,6 +38,7 @@ export default function AdminApp() {
 
       {tab === "overview" && <ContractsListPanel />}
       {tab === "clients" && <ClientsPanel />}
+      {tab === "units" && <UnitsPanel />}
       {tab === "properties" && <PropertiesPanel />}
       {tab === "contracts" && <ContractMapping />}
       {tab === "agencies" && <PartnerAgenciesPanel />}

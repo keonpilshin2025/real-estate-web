@@ -9,11 +9,12 @@ export async function GET({ params }) {
   const [row] = await sql`
     SELECT
       c.*,
-      p.property_name, p.dong AS property_dong, p.ho AS property_ho,
+      u.property_name, u.dong AS property_dong, u.ho AS property_ho,
       cl.name AS client_name, cl.phone AS client_phone,
       pa.agency_name AS partner_agency_name
     FROM contracts c
     JOIN properties p ON p.id = c.property_id
+    JOIN real_estate_units u ON u.id = p.unit_id
     JOIN clients cl ON cl.id = c.client_id
     LEFT JOIN partner_agencies pa ON pa.id = c.partner_agency_id
     WHERE c.id = ${id}

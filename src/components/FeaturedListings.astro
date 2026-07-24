@@ -1,0 +1,101 @@
+---
+// 서버에서 직접 DB 조회 (공개용 API와 동일 로직, 요청 시점에 렌더링)
+import { env } from "cloudflare:workers";
+import { getDb } from "../lib/db.js";
+
+let listings = [];
+
+try {
+  const sql = getDb(env.DATABASE_URL);
+  listings = await sql`
+    SELECT
+      p.id, u.property_name, u.property_type, u.dong, u.unit_type,
+      p.transaction_type, p.asking_price, p.asking_deposit, p.asking_monthly_rent,
+      p.features, u.address
+    FROM properties p
+    JOIN real_estate_units u ON u.id = p.unit_id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM contracts c
+      WHERE c.property_id = p.id
+        AND c.is_deleted = FALSE
+        AND c.contract_type = '매매'
+        AND (c.deal_status = '완료' OR (c.balance_date IS NOT NULL AND c.balance_date <= now()))
+    )
+    ORDER BY p.created_at DESC
+    LIMIT 20
+  `;
+} catch (e) {
+  listings = [];
+}
+
+// 동 표기에서 '동' 글자 제거 (관리자 화면과 동일한 표기 규칙)
+function stripDongSuffix(dong) {
+  return dong ? dong.replace(/동$/, "") : dong;
+}
+
+const EOK = 100000000;
+const MAN = 10000;
+function formatEokMan(n) {
+  if (!n) return null;
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+function priceText(p) {
+  if (p.transaction_type === "월세") {
+    const d = formatEokMan(p.asking_deposit) || "0원";
+    const m = formatEokMan(p.asking_monthly_rent) || "0원";
+    return `${d} / ${m}`;
+  }
+  return formatEokMan(p.asking_price) || "가격 문의";
+}
+function typeBadgeClass(t) {
+  if (t === "매매") return "bg-violet-100 text-violet-600";
+  if (t === "전세") return "bg-blue-100 text-blue-600";
+  return "bg-orange-100 text-orange-600"; // 월세
+}
+---
+
+{listings.length > 0 && (
+  <section id="hidden-listing" class="max-w-6xl mx-auto px-6 py-16 scroll-mt-24">
+    <div class="mb-8">
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-800">지금 나와있는 매물</h2>
+      <p class="text-slate-500 mt-2">여수동 센트럴타운 · 연꽃마을4단지 · 산들마을2단지 등 실시간 등록 매물이에요.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+      <table class="w-full text-xs sm:text-sm min-w-[640px]">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 text-left">
+            <th class="px-4 py-3 font-medium">매물명</th>
+            <th class="px-4 py-3 font-medium">구분</th>
+            <th class="px-4 py-3 font-medium">동</th>
+            <th class="px-4 py-3 font-medium">평형</th>
+            <th class="px-4 py-3 font-medium">거래유형</th>
+            <th class="px-4 py-3 font-medium">희망가</th>
+          </tr>
+        </thead>
+        <tbody>
+          {listings.map((p) => (
+            <tr class="border-t border-slate-100 hover:bg-slate-50">
+              <td class="px-4 py-3 font-medium text-slate-800">{p.property_name}</td>
+              <td class="px-4 py-3 text-slate-600">{p.property_type || "-"}</td>
+              <td class="px-4 py-3 text-slate-600">{stripDongSuffix(p.dong) || "-"}</td>
+              <td class="px-4 py-3 text-slate-600">{p.unit_type || "-"}</td>
+              <td class="px-4 py-3">
+                <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(p.transaction_type)}`}>
+                  {p.transaction_type || "문의"}
+                </span>
+              </td>
+              <td class="px-4 py-3 font-semibold text-violet-500">{priceText(p)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+)}

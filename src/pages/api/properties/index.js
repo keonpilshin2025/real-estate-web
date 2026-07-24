@@ -1,6 +1,5 @@
 import { env } from "cloudflare:workers";
 import { getDb } from "../../../lib/db.js";
-import { decryptToMasked } from "../../../lib/crypto.js";
 
 export const prerender = false;
 
@@ -15,7 +14,10 @@ export async function GET({ request }) {
 
   const rows = await sql`
     SELECT
-      p.*,
+      p.id, p.unit_id, p.features, p.memo, p.transaction_type,
+      p.asking_price, p.asking_deposit, p.asking_monthly_rent,
+      p.partner_agency_id, p.created_at, p.updated_at,
+      u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
       pa.agency_name AS partner_agency_name,
       COALESCE(
         (
@@ -27,24 +29,16 @@ export async function GET({ request }) {
         '[]'
       ) AS owners
     FROM properties p
+    JOIN real_estate_units u ON u.id = p.unit_id
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
     WHERE
-      (${type} = '' OR p.property_type = ${type})
-      AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.address ILIKE ${'%' + q + '%'})
+      (${type} = '' OR u.property_type = ${type})
+      AND (${q} = '' OR u.property_name ILIKE ${'%' + q + '%'} OR u.dong ILIKE ${'%' + q + '%'} OR u.ho ILIKE ${'%' + q + '%'} OR u.address ILIKE ${'%' + q + '%'})
     ORDER BY p.created_at DESC
     LIMIT ${limit}
   `;
 
-  // 과거 데이터(고객 연동 전 직접입력분)를 위한 매도자 주민번호 마스킹은 그대로 유지
-  const withMasked = await Promise.all(
-    rows.map(async (row) => {
-      const { owner_ssn_encrypted, ...rest } = row;
-      const owner_ssn_masked = owner_ssn_encrypted ? await decryptToMasked(owner_ssn_encrypted, env) : null;
-      return { ...rest, owner_ssn_masked };
-    })
-  );
-
-  return new Response(JSON.stringify(withMasked), {
+  return new Response(JSON.stringify(rows), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -56,53 +50,59 @@ export async function POST({ request }) {
   const body = await request.json();
 
   const {
-    property_name, property_type, dong, ho, address,
-    unit_type, usage_type, features, memo,
+    unit_id, features, memo,
     transaction_type, asking_price, asking_deposit, asking_monthly_rent,
     owner_client_ids, primary_owner_client_id, partner_agency_id,
   } = body;
 
-  if (!property_name || !property_type) {
-    return new Response(JSON.stringify({ error: "매물명과 매물구분은 필수입니다." }), { status: 400 });
+  const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
+  const unitIdInt = toInt(unit_id);
+
+  if (!unitIdInt) {
+    return new Response(JSON.stringify({ error: "물건을 먼저 검색해서 선택해주세요." }), { status: 400 });
   }
 
-  // 중복 매물 체크: 동/호수가 있으면 매물명+동+호수 일치, 없으면(상가/기타 등) 매물명+주소 일치로 판단
-  const dupRows = dong && ho
-    ? await sql`
-        SELECT id FROM properties
-        WHERE property_name = ${property_name} AND dong = ${dong} AND ho = ${ho}
-        LIMIT 1
-      `
-    : address
-      ? await sql`
-          SELECT id FROM properties
-          WHERE property_name = ${property_name} AND address = ${address}
-          LIMIT 1
-        `
-      : [];
+  const [unit] = await sql`SELECT id FROM real_estate_units WHERE id = ${unitIdInt}`;
+  if (!unit) {
+    return new Response(JSON.stringify({ error: "선택한 물건을 찾을 수 없습니다." }), { status: 404 });
+  }
 
-  if (dupRows.length > 0) {
+  // 이 물건에 이미 매물이 연결되어 있는지 미리 정확하게 확인 (에러 메시지 오판 방지)
+  const [existing] = await sql`SELECT id FROM properties WHERE unit_id = ${unitIdInt}`;
+  if (existing) {
     return new Response(
-      JSON.stringify({ error: "이미 등록된 매물입니다 (같은 매물명·동·호수). 매물 탭에서 검색 후 필요하면 그 매물을 수정해주세요." }),
+      JSON.stringify({ error: "이 물건에는 이미 매물이 등록되어 있습니다. 매물 탭에서 검색해서 수정해주세요." }),
       { status: 409, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
   const ownerIds = Array.isArray(owner_client_ids) ? owner_client_ids.map(toInt).filter((v) => v !== null) : [];
   const primaryId = toInt(primary_owner_client_id) ?? (ownerIds.length > 0 ? ownerIds[0] : null);
 
-  const [row] = await sql`
-    INSERT INTO properties
-      (property_name, property_type, dong, ho, address, unit_type, usage_type, features, memo,
-       transaction_type, asking_price, asking_deposit, asking_monthly_rent, partner_agency_id)
-    VALUES
-      (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${address || null},
-       ${unit_type || null}, ${usage_type || null}, ${features || null}, ${memo || null},
-       ${transaction_type || null}, ${toInt(asking_price)}, ${toInt(asking_deposit)}, ${toInt(asking_monthly_rent)},
-       ${toInt(partner_agency_id)})
-    RETURNING *
-  `;
+  let row;
+  try {
+    [row] = await sql`
+      INSERT INTO properties
+        (unit_id, features, memo, transaction_type, asking_price, asking_deposit, asking_monthly_rent, partner_agency_id)
+      VALUES
+        (${unitIdInt}, ${features || null}, ${memo || null},
+         ${transaction_type || null}, ${toInt(asking_price)}, ${toInt(asking_deposit)}, ${toInt(asking_monthly_rent)},
+         ${toInt(partner_agency_id)})
+      RETURNING *
+    `;
+  } catch (e) {
+    // 위에서 미리 확인했는데도 여기서 또 실패했다면, 진짜 원인이 다른 문제일 수 있으니 그대로 보여줌 (디버깅용)
+    const message = e?.message || String(e);
+    const isDup = /unit_id|unique/i.test(message);
+    return new Response(
+      JSON.stringify({
+        error: isDup
+          ? "이 물건에는 이미 매물이 등록되어 있습니다. 매물 탭에서 검색해서 수정해주세요."
+          : `저장 중 오류가 발생했습니다: ${message}`,
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   for (const cid of ownerIds) {
     await sql`
@@ -112,9 +112,7 @@ export async function POST({ request }) {
     `;
   }
 
-  const { owner_ssn_encrypted, ...safeRow } = row;
-
-  return new Response(JSON.stringify({ ...safeRow, owner_client_ids: ownerIds }), {
+  return new Response(JSON.stringify({ ...row, owner_client_ids: ownerIds }), {
     status: 201,
     headers: { "Content-Type": "application/json" },
   });

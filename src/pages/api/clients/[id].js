@@ -82,7 +82,7 @@ export async function DELETE({ params }) {
     SELECT COUNT(*)::int AS count FROM contracts WHERE client_id = ${id} AND is_deleted = FALSE
   `;
   const [{ count: ownerCount }] = await sql`
-    SELECT COUNT(*)::int AS count FROM properties WHERE owner_client_id = ${id}
+    SELECT COUNT(*)::int AS count FROM property_owners WHERE client_id = ${id} AND removed_at IS NULL
   `;
 
   if (contractCount > 0 || ownerCount > 0) {

@@ -12,8 +12,7 @@ export async function GET({ request }) {
   const rows = await sql`
     SELECT
       c.*,
-      p.property_name, p.dong AS property_dong, p.ho AS property_ho, p.unit_type AS property_unit_type,
-      p.owner_name AS property_owner_name, p.owner_phone AS property_owner_phone,
+      u.property_name, u.dong AS property_dong, u.ho AS property_ho, u.unit_type AS property_unit_type,
       COALESCE(
         (
           SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
@@ -27,10 +26,11 @@ export async function GET({ request }) {
       pa.agency_name AS partner_agency_name
     FROM contracts c
     JOIN properties p ON p.id = c.property_id
+    JOIN real_estate_units u ON u.id = p.unit_id
     JOIN clients cl ON cl.id = c.client_id
     LEFT JOIN partner_agencies pa ON pa.id = c.partner_agency_id
     WHERE c.is_deleted = FALSE
-      AND (${q} = '' OR p.property_name ILIKE ${'%' + q + '%'} OR p.dong ILIKE ${'%' + q + '%'} OR p.ho ILIKE ${'%' + q + '%'} OR cl.name ILIKE ${'%' + q + '%'} OR c.seller_name_snapshot ILIKE ${'%' + q + '%'})
+      AND (${q} = '' OR u.property_name ILIKE ${'%' + q + '%'} OR u.dong ILIKE ${'%' + q + '%'} OR u.ho ILIKE ${'%' + q + '%'} OR cl.name ILIKE ${'%' + q + '%'} OR c.seller_name_snapshot ILIKE ${'%' + q + '%'})
     ORDER BY c.created_at DESC
   `;
 

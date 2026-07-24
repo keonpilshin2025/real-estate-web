@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { exportToExcel, todayStr } from "../lib/excelExport.js";
-import AddressField from "./AddressField.jsx";
 import PropertyPopup from "./PropertyPopup.jsx";
 import AgencySelect from "./AgencySelect.jsx";
 
-const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
-const PROPERTY_TYPES = ["아파트", "빌라", "오피스텔", "상가", "기타"];
 const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
 const MAN = 10000;
@@ -67,14 +64,13 @@ const EXCEL_COLUMNS = [
   {
     key: "owners",
     label: "매도자/임대인 성명",
-    format: (v, row) => (Array.isArray(v) && v.length > 0 ? v.map((o) => o.name).join(", ") : row.owner_name || "-"),
+    format: (v) => (Array.isArray(v) && v.length > 0 ? v.map((o) => o.name).join(", ") : "-"),
   },
   {
     key: "owners",
     label: "매도자/임대인 연락처",
-    format: (v, row) => (Array.isArray(v) && v.length > 0 ? v.map((o) => o.phone || "-").join(", ") : row.owner_phone || "-"),
+    format: (v) => (Array.isArray(v) && v.length > 0 ? v.map((o) => o.phone || "-").join(", ") : "-"),
   },
-  { key: "owner_ssn_masked", label: "매도자/임대인 주민번호(구)", format: (v) => v || "-" },
   { key: "partner_agency_name", label: "중개유형", format: (v) => (v ? `공동 · ${v}` : "단독") },
   { key: "address", label: "주소" },
   { key: "features", label: "특장점" },
@@ -82,13 +78,7 @@ const EXCEL_COLUMNS = [
 ];
 
 const emptyForm = {
-  property_name: "",
-  property_type: "",
-  dong: "",
-  ho: "",
-  address: "",
-  unit_type: "",
-  usage_type: "",
+  unit_id: "",
   features: "",
   memo: "",
   transaction_type: "",
@@ -109,16 +99,20 @@ export default function PropertiesPanel() {
   const [exporting, setExporting] = useState(false);
   const [openDetailId, setOpenDetailId] = useState(null);
 
-  const [presets, setPresets] = useState({}); // { 센트럴타운: { address, dongs: {...} } }
-  const [isOtherName, setIsOtherName] = useState(false);
   const [agencies, setAgencies] = useState([]);
+
+  // 물건 검색 (등록/수정 시 사용)
+  const [unitQuery, setUnitQuery] = useState("");
+  const [unitResults, setUnitResults] = useState([]);
+  const [unitHighlight, setUnitHighlight] = useState(0);
+  const [selectedUnit, setSelectedUnit] = useState(null); // { id, property_name, property_type, dong, ho, unit_type, address, property_id }
 
   // 매도자(임대인) 고객 검색
   const [ownerQuery, setOwnerQuery] = useState("");
   const [ownerResults, setOwnerResults] = useState([]);
   const [ownerHighlight, setOwnerHighlight] = useState(0);
-  const [selectedOwners, setSelectedOwners] = useState([]); // [{ id, name, phone }] 공동명의 다수 가능
-  const [primaryOwnerId, setPrimaryOwnerId] = useState(null); // 주 계약자(대표)
+  const [selectedOwners, setSelectedOwners] = useState([]);
+  const [primaryOwnerId, setPrimaryOwnerId] = useState(null);
 
   async function fetchProperties() {
     setLoading(true);
@@ -129,18 +123,75 @@ export default function PropertiesPanel() {
     setLoading(false);
   }
 
-  async function fetchPresets() {
-    const res = await fetch("/api/complex-presets");
-    const data = await res.json();
-    setPresets(data || {});
-  }
-
   async function fetchAgencies() {
     const res = await fetch("/api/partner-agencies");
     const data = await res.json();
     setAgencies(Array.isArray(data) ? data : []);
   }
 
+  useEffect(() => {
+    fetchProperties();
+    fetchAgencies();
+  }, []);
+
+  function handleSearch(e) {
+    e.preventDefault();
+    fetchProperties();
+  }
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/properties?limit=10000");
+      const data = await res.json();
+      exportToExcel(data, EXCEL_COLUMNS, `매물목록_${todayStr()}.xlsx`);
+    } catch (e) {
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // ===== 물건 검색 =====
+  async function searchUnits(q) {
+    setUnitQuery(q);
+    const res = await fetch(`/api/units?q=${encodeURIComponent(q)}`);
+    setUnitResults(await res.json());
+    setUnitHighlight(0);
+  }
+
+  async function handleUnitFocus() {
+    if (unitResults.length === 0) {
+      const res = await fetch(`/api/units?q=${encodeURIComponent(unitQuery)}`);
+      setUnitResults(await res.json());
+      setUnitHighlight(0);
+    }
+  }
+
+  function handleUnitKeyDown(e) {
+    if (unitResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setUnitHighlight((i) => Math.min(i + 1, unitResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setUnitHighlight((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pickUnit(unitResults[unitHighlight]);
+    } else if (e.key === "Escape") {
+      setUnitResults([]);
+    }
+  }
+
+  function pickUnit(u) {
+    setSelectedUnit(u);
+    setForm((f) => ({ ...f, unit_id: u.id }));
+    setUnitResults([]);
+    setUnitQuery("");
+  }
+
+  // ===== 매도자(임대인) 검색 =====
   async function searchOwners(q) {
     setOwnerQuery(q);
     const res = await fetch(`/api/clients?q=${encodeURIComponent(q)}`);
@@ -176,7 +227,7 @@ export default function PropertiesPanel() {
     setSelectedOwners((prev) => {
       if (prev.some((o) => o.id === c.id)) return prev;
       const next = [...prev, c];
-      if (prev.length === 0) setPrimaryOwnerId(c.id); // 첫 소유자는 자동으로 주 계약자
+      if (prev.length === 0) setPrimaryOwnerId(c.id);
       return next;
     });
     setOwnerResults([]);
@@ -191,60 +242,12 @@ export default function PropertiesPanel() {
     });
   }
 
-  useEffect(() => {
-    fetchProperties();
-    fetchPresets();
-    fetchAgencies();
-  }, []);
-
-  function handleSearch(e) {
-    e.preventDefault();
-    fetchProperties();
-  }
-
-  async function handleExportExcel() {
-    setExporting(true);
-    try {
-      const res = await fetch("/api/properties?limit=10000");
-      const data = await res.json();
-      exportToExcel(data, EXCEL_COLUMNS, `매물목록_${todayStr()}.xlsx`);
-    } catch (e) {
-      alert("엑셀 다운로드에 실패했습니다.");
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  // 매물명 선택
-  function handleNameChange(value) {
-    if (value === "__other__") {
-      setIsOtherName(true);
-      setForm({ ...form, property_name: "", dong: "", ho: "", address: "", unit_type: "" });
-      return;
-    }
-    setIsOtherName(false);
-    const preset = presets[value];
-    setForm({
-      ...form,
-      property_name: value,
-      property_type: "아파트",
-      address: preset?.address || "",
-      dong: "",
-      ho: "",
-      unit_type: "",
-    });
-  }
-
-  const isKnown = !isOtherName && KNOWN_COMPLEXES.includes(form.property_name);
-  const dongList = isKnown ? Object.keys(presets[form.property_name]?.dongs || {}) : [];
-  const dongInfo = isKnown && form.dong ? presets[form.property_name]?.dongs?.[form.dong] : null;
-
-  function handleDongChange(dong) {
-    setForm({ ...form, dong, ho: "", unit_type: "" });
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.unit_id) {
+      alert("물건을 먼저 검색해서 선택해주세요.");
+      return;
+    }
     setSaving(true);
 
     const url = editingId ? `/api/properties/${editingId}` : "/api/properties";
@@ -259,10 +262,7 @@ export default function PropertiesPanel() {
     setSaving(false);
 
     if (res.ok) {
-      setForm(emptyForm);
-      setIsOtherName(false);
-      setEditingId(null);
-      setShowForm(false);
+      closeForm();
       fetchProperties();
     } else {
       const data = await res.json();
@@ -270,26 +270,35 @@ export default function PropertiesPanel() {
     }
   }
 
-  function openAddForm() {
+  function closeForm() {
     setForm(emptyForm);
-    setIsOtherName(false);
     setEditingId(null);
-    setOwnerQuery("");
-    setOwnerResults([]);
+    setShowForm(false);
+    setSelectedUnit(null);
+    setUnitQuery("");
+    setUnitResults([]);
     setSelectedOwners([]);
     setPrimaryOwnerId(null);
+    setOwnerQuery("");
+    setOwnerResults([]);
+  }
+
+  function openAddForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+    setSelectedUnit(null);
+    setUnitQuery("");
+    setUnitResults([]);
+    setSelectedOwners([]);
+    setPrimaryOwnerId(null);
+    setOwnerQuery("");
+    setOwnerResults([]);
     setShowForm(true);
   }
 
   function openEditForm(p) {
     setForm({
-      property_name: p.property_name || "",
-      property_type: p.property_type || "",
-      dong: p.dong || "",
-      ho: p.ho || "",
-      address: p.address || "",
-      unit_type: p.unit_type || "",
-      usage_type: p.usage_type || "",
+      unit_id: p.unit_id,
       features: p.features || "",
       memo: p.memo || "",
       transaction_type: p.transaction_type || "",
@@ -298,7 +307,17 @@ export default function PropertiesPanel() {
       asking_monthly_rent: p.asking_monthly_rent || "",
       partner_agency_id: p.partner_agency_id || "",
     });
-    setIsOtherName(!KNOWN_COMPLEXES.includes(p.property_name));
+    setSelectedUnit({
+      id: p.unit_id,
+      property_name: p.property_name,
+      property_type: p.property_type,
+      dong: p.dong,
+      ho: p.ho,
+      unit_type: p.unit_type,
+      address: p.address,
+    });
+    setUnitQuery("");
+    setUnitResults([]);
     const owners = Array.isArray(p.owners) ? p.owners : [];
     setSelectedOwners(owners);
     setPrimaryOwnerId(owners.find((o) => o.is_primary)?.id ?? (owners[0]?.id ?? null));
@@ -326,7 +345,7 @@ export default function PropertiesPanel() {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="매물명/주소 검색"
+          placeholder="매물명/동/호수/주소 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
@@ -343,13 +362,16 @@ export default function PropertiesPanel() {
         </button>
       </form>
 
+      <p className="text-slate-400 text-xs px-1">
+        등록하려는 물건이 목록에 없으면, 먼저 "물건" 탭에서 그 부동산 정보를 등록해주세요.
+      </p>
+
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
         <table className="w-full text-xs min-w-[900px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">매물명</th>
               <th className="px-4 py-3 font-medium">동</th>
-              <th className="px-4 py-3 font-medium">호수</th>
               <th className="px-4 py-3 font-medium">평형</th>
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">희망가</th>
@@ -359,8 +381,8 @@ export default function PropertiesPanel() {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && properties.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && properties.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
             {properties.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3">
@@ -372,7 +394,6 @@ export default function PropertiesPanel() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{stripDongSuffix(p.dong) || "-"}</td>
-                <td className="px-4 py-3 text-slate-600">{p.ho || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.unit_type || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{p.transaction_type || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">
@@ -414,49 +435,51 @@ export default function PropertiesPanel() {
             <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingId ? "매물 정보 수정" : "매물 등록"}</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2 text-xs">
 
-              <select
-                value={isOtherName ? "__other__" : form.property_name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              >
-                <option value="">매물명 선택 *</option>
-                {KNOWN_COMPLEXES.map((c) => <option key={c} value={c}>{c}</option>)}
-                <option value="__other__">기타 (직접입력)</option>
-              </select>
-
-              {isOtherName && (
+              <label className="text-slate-400 col-span-2 -mb-1">
+                물건 검색 * <span className="text-slate-300">(클릭하면 전체 목록, 방향키로 선택 가능)</span>
+              </label>
+              <div className="col-span-2 relative">
                 <input
-                  placeholder="매물명 직접입력 (단지명/상가명/빌라명) *"
-                  required
-                  value={form.property_name}
-                  onChange={(e) => setForm({ ...form, property_name: e.target.value })}
-                  className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+                  placeholder="물건명/동/호수/주소로 검색"
+                  value={unitQuery}
+                  onChange={(e) => searchUnits(e.target.value)}
+                  onFocus={handleUnitFocus}
+                  onKeyDown={handleUnitKeyDown}
+                  className="w-full border border-slate-200 rounded-lg h-9 px-3"
                 />
-              )}
+                {unitResults.length > 0 && (
+                  <div className="absolute z-10 bg-white border border-slate-200 rounded-lg mt-1 w-full max-h-40 overflow-y-auto shadow-sm">
+                    {unitResults.map((u, i) => (
+                      <div
+                        key={u.id}
+                        onMouseEnter={() => setUnitHighlight(i)}
+                        onClick={() => pickUnit(u)}
+                        className={`px-3 py-2 cursor-pointer ${i === unitHighlight ? "bg-violet-100" : "hover:bg-violet-50"} ${u.property_id && u.property_id !== editingId ? "opacity-50" : ""}`}
+                      >
+                        {u.property_name} · {[stripDongSuffix(u.dong), u.ho, u.unit_type].filter(Boolean).join(" ")}
+                        {u.property_id && <span className="text-red-400 ml-1">(이미 매물 연결됨)</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <select
-                required
-                value={form.property_type}
-                onChange={(e) => setForm({
-                  ...form,
-                  property_type: e.target.value,
-                  usage_type: (e.target.value === "상가" || e.target.value === "기타") ? form.usage_type : "",
-                })}
-                className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-              >
-                <option value="">매물구분 선택 *</option>
-                {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-
-              <input
-                placeholder={form.property_type === "기타" ? "매물구분 직접입력 (예: 타운하우스, 단독주택 등)" : "사용유형 (상가만 입력)"}
-                disabled={form.property_type !== "상가" && form.property_type !== "기타"}
-                value={form.usage_type}
-                onChange={(e) => setForm({ ...form, usage_type: e.target.value })}
-                className={`col-span-2 border border-slate-200 rounded-lg h-9 px-3 ${
-                  (form.property_type === "상가" || form.property_type === "기타") ? "bg-white text-slate-800" : "bg-slate-100 text-slate-300 cursor-not-allowed"
-                }`}
-              />
+                {selectedUnit ? (
+                  <div className={`mt-2 border rounded-lg p-3 ${selectedUnit.property_id && selectedUnit.property_id !== editingId ? "bg-red-50 border-red-200" : "bg-violet-50 border-violet-100"}`}>
+                    <p className={`font-medium ${selectedUnit.property_id && selectedUnit.property_id !== editingId ? "text-red-700" : "text-violet-700"}`}>{selectedUnit.property_name}</p>
+                    <p className={selectedUnit.property_id && selectedUnit.property_id !== editingId ? "text-red-500" : "text-violet-500"}>
+                      {[selectedUnit.property_type, stripDongSuffix(selectedUnit.dong), selectedUnit.ho, selectedUnit.unit_type].filter(Boolean).join(" · ")}
+                    </p>
+                    <p className={selectedUnit.property_id && selectedUnit.property_id !== editingId ? "text-red-400" : "text-violet-400"}>{selectedUnit.address}</p>
+                    {selectedUnit.property_id && selectedUnit.property_id !== editingId && (
+                      <p className="text-red-500 font-medium mt-1">⚠ 이 물건은 이미 다른 매물에 연결되어 있어요. 다른 물건을 선택해주세요.</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 mt-1">
+                    목록에 없으면 먼저 "물건" 탭에서 등록해주세요.
+                  </p>
+                )}
+              </div>
 
               <label className="text-slate-400 col-span-2 -mb-1">중개유형 (공동중개 시 부동산 선택)</label>
               <AgencySelect
@@ -470,16 +493,14 @@ export default function PropertiesPanel() {
                 매도자(임대인) 고객 검색 <span className="text-slate-300">(공동명의면 여러 명 추가 가능, 방향키로 선택 가능)</span>
               </label>
               <div className="col-span-2 relative">
-                <div className="flex gap-2">
-                  <input
-                    placeholder="이름 또는 연락처로 검색, 또는 클릭해서 목록 보기"
-                    value={ownerQuery}
-                    onChange={(e) => searchOwners(e.target.value)}
-                    onFocus={handleOwnerFocus}
-                    onKeyDown={handleOwnerKeyDown}
-                    className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
-                  />
-                </div>
+                <input
+                  placeholder="이름 또는 연락처로 검색, 또는 클릭해서 목록 보기"
+                  value={ownerQuery}
+                  onChange={(e) => searchOwners(e.target.value)}
+                  onFocus={handleOwnerFocus}
+                  onKeyDown={handleOwnerKeyDown}
+                  className="w-full border border-slate-200 rounded-lg h-9 px-3"
+                />
                 {ownerResults.length > 0 && (
                   <div className="absolute z-10 bg-white border border-slate-200 rounded-lg mt-1 w-full max-h-40 overflow-y-auto shadow-sm">
                     {ownerResults.map((c, i) => (
@@ -521,9 +542,6 @@ export default function PropertiesPanel() {
                     ))}
                   </div>
                 )}
-                {selectedOwners.length > 1 && (
-                  <p className="text-slate-400 mt-1">★ 표시된 사람이 주 계약자예요. 실무 협의는 이 사람 위주로 하시면 되고, 계약서엔 전원 정보가 그대로 유지돼요.</p>
-                )}
 
                 <p className="text-slate-400 mt-1">
                   목록에 없으면 먼저 "고객" 탭에서 등록해주세요. 성명/연락처/주민번호는 연결된 고객 정보를 그대로 사용해요.
@@ -558,77 +576,6 @@ export default function PropertiesPanel() {
                 </>
               )}
 
-              {/* 동 */}
-              {isKnown ? (
-                <select
-                  value={form.dong}
-                  onChange={(e) => handleDongChange(e.target.value)}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                >
-                  <option value="">동 선택</option>
-                  {dongList.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              ) : (
-                <input
-                  placeholder="동 (예: 101동)"
-                  value={form.dong}
-                  onChange={(e) => setForm({ ...form, dong: e.target.value })}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                />
-              )}
-
-              {/* 호수 */}
-              {isKnown ? (
-                <select
-                  value={form.ho}
-                  onChange={(e) => setForm({ ...form, ho: e.target.value })}
-                  disabled={!form.dong}
-                  className={`border border-slate-200 rounded-lg h-9 px-3 ${!form.dong ? "bg-slate-100 text-slate-300" : ""}`}
-                >
-                  <option value="">호수 선택</option>
-                  {(dongInfo?.ho_list || []).map((h) => <option key={h} value={h}>{h}호</option>)}
-                </select>
-              ) : (
-                <input
-                  placeholder="호수 (예: 1502호)"
-                  value={form.ho}
-                  onChange={(e) => setForm({ ...form, ho: e.target.value })}
-                  className="border border-slate-200 rounded-lg h-9 px-3"
-                />
-              )}
-
-              {/* 평형 */}
-              {isKnown ? (
-                <select
-                  value={form.unit_type}
-                  onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
-                  className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-                >
-                  <option value="">평형 선택</option>
-                  {(dongInfo?.unit_types || presets[form.property_name]?.dongs?.[dongList[0]]?.unit_types || []).map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  placeholder="평형 (예: 30평대, 숫자만 입력하면 자동으로 '평' 붙어요)"
-                  value={form.unit_type}
-                  onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
-                  onBlur={(e) => {
-                    const v = e.target.value.trim();
-                    if (/^\d+(\.\d+)?$/.test(v)) setForm((f) => ({ ...f, unit_type: v + "평" }));
-                  }}
-                  className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-                />
-              )}
-
-              {/* 주소 */}
-              <AddressField
-                value={form.address}
-                onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
-                readOnly={isKnown}
-              />
-
               <label className="text-slate-400 col-span-2 -mb-1">특장점 (최대 500자)</label>
               <textarea
                 maxLength={500}
@@ -647,8 +594,12 @@ export default function PropertiesPanel() {
               />
 
               <div className="col-span-2 flex justify-end gap-2 mt-2">
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
-                <button type="submit" disabled={saving} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50">
+                <button type="button" onClick={closeForm} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>
+                <button
+                  type="submit"
+                  disabled={saving || (selectedUnit && selectedUnit.property_id && selectedUnit.property_id !== editingId)}
+                  className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500 disabled:opacity-50"
+                >
                   {saving ? "저장 중..." : editingId ? "수정 완료" : "저장"}
                 </button>
               </div>
