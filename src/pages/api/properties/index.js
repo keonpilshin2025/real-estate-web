@@ -16,7 +16,7 @@ export async function GET({ request }) {
     SELECT
       p.id, p.unit_id, p.features, p.memo, p.transaction_type,
       p.asking_price, p.asking_deposit, p.asking_monthly_rent,
-      p.partner_agency_id, p.created_at, p.updated_at,
+      p.partner_agency_id, p.created_at,
       u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
       pa.agency_name AS partner_agency_name,
       COALESCE(

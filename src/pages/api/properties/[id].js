@@ -11,79 +11,91 @@ export async function GET({ params, request }) {
   const clientIdParam = url.searchParams.get("client_id");
   const contextClientId = clientIdParam ? Number(clientIdParam) : null;
 
-  const [row] = await sql`
-    SELECT
-      p.id, p.unit_id, p.features, p.memo, p.transaction_type,
-      p.asking_price, p.asking_deposit, p.asking_monthly_rent,
-      p.partner_agency_id, p.created_at, p.updated_at,
-      u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
-      pa.agency_name AS partner_agency_name,
-      c.id AS active_contract_id,
-      c.contract_type AS final_contract_type,
-      c.price AS final_price,
-      c.deposit AS final_deposit,
-      c.monthly_rent AS final_monthly_rent,
-      c.balance_date AS final_balance_date,
-      c.deal_status AS final_deal_status,
-      c.seller_name_snapshot AS final_seller_name,
-      c.seller_phone_snapshot AS final_seller_phone,
-      c.seller_client_id_snapshot AS final_seller_client_id
-    FROM properties p
-    JOIN real_estate_units u ON u.id = p.unit_id
-    LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
-    LEFT JOIN LATERAL (
-      SELECT * FROM contracts c2
-      WHERE c2.property_id = p.id
-        AND c2.is_deleted = FALSE
-        AND (
-          -- client_id가 지정되면 정확히 그 계약(그 시점 그대로)을, 아니면 현재 진행 중인 계약을 사용
-          (${contextClientId}::int IS NOT NULL AND c2.client_id = ${contextClientId})
-          OR (${contextClientId}::int IS NULL AND (c2.balance_date IS NULL OR c2.balance_date >= now()))
-        )
-      ORDER BY c2.created_at DESC
-      LIMIT 1
-    ) c ON true
-    WHERE p.id = ${id}
-  `;
+  try {
+  // 서로 의존하지 않는 쿼리 3개를 동시에 실행 (순서대로 하나씩 기다리지 않음)
+  const [rowResult, owners, ownerHistory] = await Promise.all([
+    sql`
+      SELECT
+        p.id, p.unit_id, p.features, p.memo, p.transaction_type,
+        p.asking_price, p.asking_deposit, p.asking_monthly_rent,
+        p.partner_agency_id, p.created_at, p.updated_at,
+        u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
+        pa.agency_name AS partner_agency_name,
+        c.id AS active_contract_id,
+        c.contract_type AS final_contract_type,
+        c.price AS final_price,
+        c.deposit AS final_deposit,
+        c.monthly_rent AS final_monthly_rent,
+        c.balance_date AS final_balance_date,
+        c.deal_status AS final_deal_status,
+        c.seller_name_snapshot AS final_seller_name,
+        c.seller_phone_snapshot AS final_seller_phone,
+        c.seller_client_id_snapshot AS final_seller_client_id
+      FROM properties p
+      JOIN real_estate_units u ON u.id = p.unit_id
+      LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
+      LEFT JOIN LATERAL (
+        SELECT * FROM contracts c2
+        WHERE c2.property_id = p.id
+          AND c2.is_deleted = FALSE
+          AND (
+            -- client_id가 지정되면 정확히 그 계약(그 시점 그대로)을, 아니면 현재 진행 중인 계약을 사용
+            (${contextClientId}::int IS NOT NULL AND c2.client_id = ${contextClientId})
+            OR (${contextClientId}::int IS NULL AND (c2.balance_date IS NULL OR c2.balance_date >= now()))
+          )
+        ORDER BY c2.created_at DESC
+        LIMIT 1
+      ) c ON true
+      WHERE p.id = ${id}
+    `,
+    sql`
+      SELECT oc.id, oc.name, oc.phone, oc.ssn_encrypted, po.is_primary
+      FROM property_owners po
+      JOIN clients oc ON oc.id = po.client_id
+      WHERE po.property_id = ${id} AND po.removed_at IS NULL
+      ORDER BY po.is_primary DESC, po.id
+    `,
+    sql`
+      SELECT oc.id, oc.name, oc.phone, po.created_at AS since, po.removed_at AS until
+      FROM property_owners po
+      JOIN clients oc ON oc.id = po.client_id
+      WHERE po.property_id = ${id}
+      ORDER BY po.created_at ASC
+    `,
+  ]);
 
+  const row = rowResult[0];
   if (!row) {
     return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
 
-  const owners = await sql`
-    SELECT oc.id, oc.name, oc.phone, oc.ssn_encrypted, po.is_primary
-    FROM property_owners po
-    JOIN clients oc ON oc.id = po.client_id
-    WHERE po.property_id = ${id} AND po.removed_at IS NULL
-    ORDER BY po.is_primary DESC, po.id
-  `;
-  const ownersSafe = await Promise.all(
-    owners.map(async (o) => {
-      const { ssn_encrypted, ...rest } = o;
-      const ssn_masked = ssn_encrypted ? await decryptToMasked(ssn_encrypted, env) : null;
-      return { ...rest, ssn_masked };
-    })
-  );
-
-  // 소유자 변경 이력 (지금은 빠진 사람 포함 전체, 시간순)
-  const ownerHistory = await sql`
-    SELECT oc.id, oc.name, oc.phone, po.created_at AS since, po.removed_at AS until
-    FROM property_owners po
-    JOIN clients oc ON oc.id = po.client_id
-    WHERE po.property_id = ${id}
-    ORDER BY po.created_at ASC
-  `;
-
-  let final_seller_ssn_masked = null;
-  if (row.final_seller_client_id) {
-    const [fc] = await sql`SELECT ssn_encrypted FROM clients WHERE id = ${row.final_seller_client_id}`;
-    final_seller_ssn_masked = fc?.ssn_encrypted ? await decryptToMasked(fc.ssn_encrypted, env) : null;
-  }
+  // 소유자 주민번호 마스킹 + 매도인 주민번호 마스킹도 동시에 처리
+  const [ownersSafe, final_seller_ssn_masked] = await Promise.all([
+    Promise.all(
+      owners.map(async (o) => {
+        const { ssn_encrypted, ...rest } = o;
+        const ssn_masked = ssn_encrypted ? await decryptToMasked(ssn_encrypted, env) : null;
+        return { ...rest, ssn_masked };
+      })
+    ),
+    row.final_seller_client_id
+      ? sql`SELECT ssn_encrypted FROM clients WHERE id = ${row.final_seller_client_id}`.then(
+          async ([fc]) => (fc?.ssn_encrypted ? await decryptToMasked(fc.ssn_encrypted, env) : null)
+        )
+      : Promise.resolve(null),
+  ]);
 
   return new Response(JSON.stringify({ ...row, final_seller_ssn_masked, owners: ownersSafe, owner_history: ownerHistory }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
+  } catch (e) {
+    console.error("GET /api/properties/[id] failed:", e);
+    return new Response(
+      JSON.stringify({ error: e.message || String(e) }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }
 
 export async function PUT({ request, params }) {

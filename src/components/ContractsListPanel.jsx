@@ -215,7 +215,7 @@ export default function ContractsListPanel() {
 
   async function fetchContracts() {
     setLoading(true);
-    const params = new URLSearchParams({ q });
+    const params = new URLSearchParams({ q, view: "list" });
     const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
     const deduped = dedupeCompletedByClient(Array.isArray(data) ? data : []);
