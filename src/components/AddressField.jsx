@@ -3,7 +3,7 @@ import AddressSearchButton from "./AddressSearchButton.jsx";
 
 // value: 부모가 갖고 있는 최종 주소 문자열 (기본주소 + 상세주소가 합쳐진 값)
 // onChange: 합쳐진 최종 주소 문자열을 전달
-export default function AddressField({ value, onChange, readOnly = false }) {
+export default function AddressField({ value, onChange, readOnly = false, onSelectRaw }) {
   const [base, setBase] = useState(value || "");
   const [detail, setDetail] = useState("");
 
@@ -47,7 +47,7 @@ export default function AddressField({ value, onChange, readOnly = false }) {
           onChange={(e) => handleBaseChange(e.target.value)}
           className="flex-1 border border-slate-200 rounded-lg h-9 px-3"
         />
-        <AddressSearchButton onSelect={handleSelect} />
+        <AddressSearchButton onSelect={handleSelect} onSelectRaw={onSelectRaw} />
       </div>
       <input
         placeholder="상세주소 (동/호수, 층 등)"

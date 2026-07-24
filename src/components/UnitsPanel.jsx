@@ -4,6 +4,7 @@ import AddressField from "./AddressField.jsx";
 
 const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"];
 const PROPERTY_TYPES = ["아파트", "빌라", "오피스텔", "상가", "기타"];
+const PYEONG_TO_SQM = 3.3058; // 1평 = 3.3058㎡
 
 // 동 값 끝에 붙은 "동" 글자 제거 (예: "316동" -> "316")
 function stripDongSuffix(dong) {
@@ -39,6 +40,76 @@ export default function UnitsPanel() {
 
   const [presets, setPresets] = useState({});
   const [isOtherName, setIsOtherName] = useState(false);
+
+  // 건축물대장 조회 (기타 물건 등록 시, 집합건물만 해당)
+  const [addressMeta, setAddressMeta] = useState(null); // { bcode, jibunAddress }
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+  const [lookupResult, setLookupResult] = useState(null); // { bldNm, mainPurps, units }
+  const [unitFilterQuery, setUnitFilterQuery] = useState("");
+
+  // 동/호수 문자열에서 숫자를 뽑아 자연스러운 순서로 정렬 (예: 2동이 10동보다 앞에 오도록)
+  function extractNum(v) {
+    const m = (v || "").match(/\d+/);
+    return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER;
+  }
+  function sortUnits(units) {
+    return [...units].sort((a, b) => {
+      const dongDiff = extractNum(a.dong) - extractNum(b.dong);
+      if (dongDiff !== 0) return dongDiff;
+      return extractNum(a.ho) - extractNum(b.ho);
+    });
+  }
+
+  function guessPropertyType(mainPurps) {
+    const s = mainPurps || "";
+    if (s.includes("아파트")) return "아파트";
+    if (s.includes("다세대") || s.includes("연립")) return "빌라";
+    if (s.includes("오피스텔")) return "오피스텔";
+    return "기타";
+  }
+
+  async function handleBuildingLookup() {
+    if (!addressMeta?.bcode) return;
+    setLookupLoading(true);
+    setLookupError("");
+    setLookupResult(null);
+    try {
+      const params = new URLSearchParams({
+        bcode: addressMeta.bcode,
+        jibun: addressMeta.jibunAddress || "",
+        dong: unitFilterQuery.trim(),
+      });
+      const res = await fetch(`/api/building-lookup?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "조회에 실패했습니다.");
+      if (!data.units || data.units.length === 0) {
+        setLookupError(
+          unitFilterQuery.trim()
+            ? `"${unitFilterQuery}" 동은 찾지 못했어요. 동 표기를 확인하거나 비워두고 전체 조회해보세요.`
+            : "이 주소로는 집합건물 전유부 정보를 찾지 못했어요. 단독주택이거나 등록된 대장이 없을 수 있어요."
+        );
+      } else {
+        setLookupResult(data);
+      }
+    } catch (e) {
+      setLookupError(e.message || "조회 중 오류가 발생했습니다.");
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  function applyLookupUnit(u) {
+    setForm((f) => ({
+      ...f,
+      property_type: guessPropertyType(lookupResult?.mainPurps),
+      dong: u.dong ? (u.dong.endsWith("동") ? u.dong : u.dong + "동") : f.dong,
+      ho: u.ho || f.ho,
+      unit_sqm: u.sqm ? String(u.sqm) : f.unit_sqm,
+      unit_type: u.sqm ? `${Math.round((u.sqm / PYEONG_TO_SQM) * 10) / 10}평` : f.unit_type,
+    }));
+    setLookupResult(null);
+  }
 
   async function fetchUnits() {
     setLoading(true);
@@ -140,10 +211,19 @@ export default function UnitsPanel() {
     }
   }
 
+  function resetLookupState() {
+    setAddressMeta(null);
+    setLookupLoading(false);
+    setLookupError("");
+    setLookupResult(null);
+    setUnitFilterQuery("");
+  }
+
   function openAddForm() {
     setForm(emptyForm);
     setIsOtherName(false);
     setEditingId(null);
+    resetLookupState();
     setShowForm(true);
   }
 
@@ -160,6 +240,7 @@ export default function UnitsPanel() {
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(u.property_name));
     setEditingId(u.id);
+    resetLookupState();
     setShowForm(true);
   }
 
@@ -263,13 +344,22 @@ export default function UnitsPanel() {
               </select>
 
               {isOtherName && (
-                <input
-                  placeholder="물건명 직접입력 (단지명/상가명/빌라명) *"
-                  required
-                  value={form.property_name}
-                  onChange={(e) => setForm({ ...form, property_name: e.target.value })}
-                  className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
-                />
+                <>
+                  <div className="col-span-2 bg-violet-50 border border-violet-100 rounded-lg p-3 flex items-start gap-2">
+                    <span className="text-violet-500 shrink-0">💡</span>
+                    <p className="text-violet-600">
+                      아파트·오피스텔·연립·다세대 같은 <strong>집합건물</strong>이면, 아래에서 <strong>주소만 검색</strong>하면 건축물대장에서 동/호수/평형/전용면적을 자동으로 가져올 수 있어요.
+                      (직접 입력 안 하셔도 돼요!)
+                    </p>
+                  </div>
+                  <input
+                    placeholder="물건명 직접입력 (단지명/상가명/빌라명) *"
+                    required
+                    value={form.property_name}
+                    onChange={(e) => setForm({ ...form, property_name: e.target.value })}
+                    className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
+                  />
+                </>
               )}
 
               <select
@@ -369,21 +459,34 @@ export default function UnitsPanel() {
               ) : (
                 <>
                   <input
-                    placeholder="평형 (숫자만 입력하면 자동으로 '평' 붙어요)"
+                    placeholder="평형 (숫자만 입력하면 자동으로 '평' 붙고, 전용면적도 자동 계산돼요)"
                     value={form.unit_type}
                     onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
                     onBlur={(e) => {
                       const v = e.target.value.trim();
-                      if (/^\d+(\.\d+)?$/.test(v)) setForm((f) => ({ ...f, unit_type: v + "평" }));
+                      const num = parseFloat(v.replace("평", ""));
+                      const isPureNumber = /^\d+(\.\d+)?$/.test(v);
+                      setForm((f) => ({
+                        ...f,
+                        unit_type: isPureNumber ? v + "평" : f.unit_type,
+                        unit_sqm: !f.unit_sqm && !isNaN(num) ? (num * PYEONG_TO_SQM).toFixed(2) : f.unit_sqm,
+                      }));
                     }}
                     className="border border-slate-200 rounded-lg h-9 px-3"
                   />
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="전용면적(㎡)"
+                    placeholder="전용면적(㎡) - 입력하면 평형도 자동 계산돼요"
                     value={form.unit_sqm}
                     onChange={(e) => setForm({ ...form, unit_sqm: e.target.value })}
+                    onBlur={(e) => {
+                      const num = parseFloat(e.target.value);
+                      if (!form.unit_type && !isNaN(num)) {
+                        const pyeong = Math.round((num / PYEONG_TO_SQM) * 10) / 10;
+                        setForm((f) => ({ ...f, unit_type: `${pyeong}평` }));
+                      }
+                    }}
                     className="border border-slate-200 rounded-lg h-9 px-3"
                   />
                 </>
@@ -394,7 +497,53 @@ export default function UnitsPanel() {
                 value={form.address}
                 onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
                 readOnly={isKnown}
+                onSelectRaw={(data) => setAddressMeta({ bcode: data.bcode, jibunAddress: data.jibunAddress })}
               />
+
+              {isOtherName && (
+                <div className="col-span-2">
+                  <input
+                    type="text"
+                    value={unitFilterQuery}
+                    onChange={(e) => setUnitFilterQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleBuildingLookup(); } }}
+                    placeholder="동 입력 (예: 807, 비워두면 전체 조회 — 대단지는 동 입력 추천!)"
+                    className="w-full border border-slate-200 rounded-lg h-9 px-3 mb-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleBuildingLookup}
+                    disabled={!addressMeta?.bcode || lookupLoading}
+                    className="w-full border border-violet-200 text-violet-600 rounded-lg h-9 px-3 hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {lookupLoading ? "조회 중..." : "건축물대장에서 정보 가져오기 (집합건물만)"}
+                  </button>
+                  {!addressMeta?.bcode && (
+                    <p className="text-slate-400 mt-1">먼저 위 "주소 검색"으로 주소를 찾아주세요.</p>
+                  )}
+                  {lookupError && <p className="text-red-400 mt-1">{lookupError}</p>}
+
+                  {lookupResult && (
+                    <div className="mt-2 border border-violet-200 rounded-lg overflow-hidden">
+                      <div className="bg-violet-50 px-3 py-2 text-violet-700 font-medium">
+                        {lookupResult.bldNm || "건물"} · {lookupResult.mainPurps || "용도 확인 필요"} — 호수를 선택하세요 ({lookupResult.units.length}건)
+                      </div>
+                      <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                        {sortUnits(lookupResult.units).map((u, i) => (
+                          <div
+                            key={i}
+                            onClick={() => applyLookupUnit(u)}
+                            className="px-3 py-2 cursor-pointer hover:bg-violet-50 flex justify-between"
+                          >
+                            <span>{[u.dong, u.ho].filter(Boolean).join(" ") || "동/호 정보 없음"}</span>
+                            <span className="text-slate-400">{u.sqm ? `${u.sqm}㎡` : "-"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="col-span-2 flex justify-end gap-2 mt-2">
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>

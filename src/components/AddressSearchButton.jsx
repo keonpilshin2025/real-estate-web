@@ -14,7 +14,7 @@ function loadDaumPostcodeScript() {
   });
 }
 
-export default function AddressSearchButton({ onSelect, className = "" }) {
+export default function AddressSearchButton({ onSelect, onSelectRaw, className = "" }) {
   const [loading, setLoading] = useState(false);
 
   async function openSearch() {
@@ -25,6 +25,7 @@ export default function AddressSearchButton({ onSelect, className = "" }) {
         oncomplete: (data) => {
           const addr = data.roadAddress || data.jibunAddress;
           onSelect(addr);
+          if (onSelectRaw) onSelectRaw(data);
         },
       }).open();
     } catch (e) {
