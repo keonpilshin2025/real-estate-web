@@ -103,7 +103,7 @@ export async function PUT({ request, params }) {
   const ownerIds = Array.isArray(owner_client_ids) ? owner_client_ids.map(toInt).filter((v) => v !== null) : [];
   const primaryId = toInt(primary_owner_client_id) ?? (ownerIds.length > 0 ? ownerIds[0] : null);
 
-  // 현재 활성 소유자와 비교해서 "실제로 소유자를 바꾸려는 건지" 먼저 확인
+  // 현재 값 조회 (소유자 변경 여부 + 희망가/거래유형 변경 여부를 함께 판단)
   const currentActive = await sql`
     SELECT client_id FROM property_owners WHERE property_id = ${id} AND removed_at IS NULL
   `;
@@ -113,15 +113,29 @@ export async function PUT({ request, params }) {
   const ownerSetChanged =
     sortedCurrent.length !== sortedNext.length || sortedCurrent.some((v, i) => v !== sortedNext[i]);
 
-  if (ownerSetChanged) {
+  const [current] = await sql`
+    SELECT transaction_type, asking_price, asking_deposit, asking_monthly_rent FROM properties WHERE id = ${id}
+  `;
+  const nextAskingPrice = toInt(asking_price);
+  const nextAskingDeposit = toInt(asking_deposit);
+  const nextAskingMonthlyRent = toInt(asking_monthly_rent);
+  const askingChanged = current && (
+    (current.transaction_type || null) !== (transaction_type || null) ||
+    current.asking_price !== nextAskingPrice ||
+    current.asking_deposit !== nextAskingDeposit ||
+    current.asking_monthly_rent !== nextAskingMonthlyRent
+  );
+
+  if (ownerSetChanged || askingChanged) {
     const [{ count }] = await sql`
       SELECT COUNT(*)::int AS count FROM contracts
       WHERE property_id = ${id} AND is_deleted = FALSE
         AND (balance_date IS NULL OR balance_date >= now())
     `;
     if (count > 0) {
+      const what = ownerSetChanged && askingChanged ? "소유자와 희망가/거래유형을" : ownerSetChanged ? "소유자를" : "희망가/거래유형을";
       return new Response(
-        JSON.stringify({ error: `이 매물에 진행 중인 계약이 ${count}건 있어 소유자를 변경할 수 없습니다. 계약이 완료되거나 삭제된 후 다시 시도해주세요.` }),
+        JSON.stringify({ error: `이 매물에 진행 중인 계약이 ${count}건 있어 ${what} 변경할 수 없습니다. 계약이 완료되거나 삭제된 후 다시 시도해주세요.` }),
         { status: 409, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -131,8 +145,8 @@ export async function PUT({ request, params }) {
     UPDATE properties SET
       features = ${features || null}, memo = ${memo || null},
       transaction_type = ${transaction_type || null},
-      asking_price = ${toInt(asking_price)}, asking_deposit = ${toInt(asking_deposit)},
-      asking_monthly_rent = ${toInt(asking_monthly_rent)},
+      asking_price = ${nextAskingPrice}, asking_deposit = ${nextAskingDeposit},
+      asking_monthly_rent = ${nextAskingMonthlyRent},
       partner_agency_id = ${toInt(partner_agency_id)},
       updated_at = now()
     WHERE id = ${id}

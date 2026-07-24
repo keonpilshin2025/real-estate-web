@@ -1,4 +1,6 @@
 ---
+export const prerender = false; // 매물 목록을 실시간으로 보여주기 위해 매 요청마다 서버에서 렌더링
+
 // 1. Astroship의 기본 레이아웃과 컴포넌트를 불러옵니다.
 import Layout from "../layouts/Layout.astro";
 import Container from "../components/container.astro";
@@ -7,6 +9,7 @@ import officeImg from "../images/centralmainimg.jpg";
 // 신규 React 컴포넌트
 import Hero from "../components/Hero.jsx";
 import QuickMenu from "../components/QuickMenu.jsx";
+import FeaturedListings from "../components/FeaturedListings.astro";
 import InquiryForm from "../components/InquiryForm.jsx";
 import ReviewCard from "../components/ReviewCard.jsx";
 
@@ -23,7 +26,7 @@ const regNo = "41133-2020-00049";
     const targetUrl = isMobile
       ? "https://fin.land.naver.com/realtor/tpsxmfjfrhddls?complexNumber=102283&articleTradeTypes=A1"
       : "https://new.land.naver.com?realtorId=tpsxmfjfrhddls";
-    if (targetUrl) window.location.href = targetUrl;
+    if (targetUrl) window.open(targetUrl, "_blank", "noopener,noreferrer");
   }
 </script>
 <!--
@@ -117,6 +120,9 @@ const regNo = "41133-2020-00049";
 
       <!-- 퀵메뉴: 단지비교 · 학군정보 · 개발호재 · 급매물 -->
       <QuickMenu client:load />
+
+      <!-- 지금 나와있는 매물: 관리자에서 등록된 매물 중 안전한 정보만 노출 -->
+      <FeaturedListings />
 
       <!-- 희망 조건 매물 신청 폼 -->
       <div class="px-1 pb-4">
