@@ -22,7 +22,7 @@ try {
       AND (c.deal_status = '완료' OR (c.balance_date IS NOT NULL AND c.balance_date <= now()))
     GROUP BY u.property_name, u.unit_type, u.unit_sqm, u.unit_supply_sqm, c.contract_type, c.price, c.deposit, c.monthly_rent, c.balance_date
     ORDER BY c.balance_date DESC NULLS LAST
-    LIMIT 4
+    LIMIT 10
   `;
 } catch (e) {
   deals = [];
@@ -79,18 +79,64 @@ function typeBadgeClass(t) {
       <a href="/deals" class="text-violet-500 font-bold hover:underline shrink-0">전체보기 &rarr;</a>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-      {deals.map((d) => (
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(d.contract_type)}`}>
-            {d.contract_type}
-          </span>
-          <h3 class="text-base font-bold text-slate-800 mt-3">{d.property_name}</h3>
-          <p class="text-sm text-slate-500">{pyeongText(d)}</p>
-          <p class="text-lg font-bold text-violet-500 mt-2">{priceText(d)}</p>
-          {d.balance_date && <p class="text-xs text-slate-400 mt-1">{dateText(d.balance_date)} 거래완료</p>}
-        </div>
-      ))}
+    <div class="relative">
+      <div
+        id="recent-deals-track"
+        class="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 scroll-smooth"
+        style="scrollbar-width: none; -ms-overflow-style: none;"
+      >
+        {deals.map((d) => (
+          <div class="shrink-0 w-64 snap-start bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(d.contract_type)}`}>
+              {d.contract_type}
+            </span>
+            <h3 class="text-base font-bold text-slate-800 mt-3">{d.property_name}</h3>
+            <p class="text-sm text-slate-500">{pyeongText(d)}</p>
+            <p class="text-lg font-bold text-violet-500 mt-2">{priceText(d)}</p>
+            {d.balance_date && <p class="text-xs text-slate-400 mt-1">{dateText(d.balance_date)} 거래완료</p>}
+          </div>
+        ))}
+      </div>
     </div>
   </section>
 )}
+
+<style>
+  #recent-deals-track::-webkit-scrollbar {
+    display: none;
+  }
+</style>
+
+<script>
+  function initRecentDealsAutoScroll() {
+    const track = document.getElementById("recent-deals-track");
+    if (!track) return;
+
+    let timer = null;
+
+    function start() {
+      stop();
+      timer = setInterval(() => {
+        const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 5;
+        if (atEnd) {
+          track.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          track.scrollBy({ left: 280, behavior: "smooth" });
+        }
+      }, 2800);
+    }
+    function stop() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    start();
+    // 사용자가 직접 만지작거리는 동안엔 자동 스크롤을 멈추고, 손 떼면 다시 시작
+    track.addEventListener("mouseenter", stop);
+    track.addEventListener("mouseleave", start);
+    track.addEventListener("touchstart", stop, { passive: true });
+    track.addEventListener("touchend", () => setTimeout(start, 2000), { passive: true });
+  }
+
+  initRecentDealsAutoScroll();
+</script>
