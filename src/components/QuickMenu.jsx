@@ -49,7 +49,7 @@ const items = [
 
 export default function QuickMenu() {
   return (
-    <div className="grid grid-cols-4 gap-3 px-1 py-6">
+    <div className="grid grid-cols-4 gap-3 px-1 py-4">
       {items.map((item) => (
         <a
           key={item.label}

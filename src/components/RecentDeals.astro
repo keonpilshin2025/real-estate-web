@@ -1,0 +1,96 @@
+---
+// 3대장 아파트의 완료된 거래를 자랑용으로 보여줌.
+// 개인정보(동/호수/고객명) 없이 단지명/평형/거래유형/금액/시기만 노출.
+import { env } from "cloudflare:workers";
+import { getDb } from "../lib/db.js";
+
+const KNOWN_COMPLEXES = ["센트럴타운", "연꽃마을4단지", "산들마을2단지"]; // 나중에 거래 사례 많아지면 다시 필터로 사용
+
+let deals = [];
+
+try {
+  const sql = getDb(env.DATABASE_URL);
+  deals = await sql`
+    SELECT
+      u.property_name, u.unit_type, u.unit_sqm, u.unit_supply_sqm,
+      c.contract_type, c.price, c.deposit, c.monthly_rent, c.balance_date
+    FROM contracts c
+    JOIN properties p ON p.id = c.property_id
+    JOIN real_estate_units u ON u.id = p.unit_id
+    WHERE c.is_deleted = FALSE
+      -- 3대장 필터(나중에 거래 사례 많아지면 다시 켜기): AND u.property_name = ANY(...)
+      AND (c.deal_status = '완료' OR (c.balance_date IS NOT NULL AND c.balance_date <= now()))
+    GROUP BY u.property_name, u.unit_type, u.unit_sqm, u.unit_supply_sqm, c.contract_type, c.price, c.deposit, c.monthly_rent, c.balance_date
+    ORDER BY c.balance_date DESC NULLS LAST
+    LIMIT 4
+  `;
+} catch (e) {
+  deals = [];
+}
+
+const EOK = 100000000;
+const MAN = 10000;
+function formatEokMan(n) {
+  if (!n) return null;
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+function priceText(d) {
+  if (d.contract_type === "월세") {
+    const dep = formatEokMan(d.deposit) || "0원";
+    const m = formatEokMan(d.monthly_rent) || "0원";
+    return `${dep} / ${m}`;
+  }
+  return formatEokMan(d.price) || "-";
+}
+function dateText(v) {
+  if (!v) return "";
+  return String(v).slice(0, 10).replace(/-/g, ".");
+}
+const PYEONG_TO_SQM = 3.3058;
+function pyeongText(d) {
+  const supply = d.unit_supply_sqm ? Math.round((d.unit_supply_sqm / PYEONG_TO_SQM) * 10) / 10 : null;
+  const exclusive = d.unit_sqm ? Math.round((d.unit_sqm / PYEONG_TO_SQM) * 10) / 10 : null;
+  if (supply && exclusive) return `${supply}평/${exclusive}평`;
+  if (supply) return `${supply}평`;
+  if (exclusive) return `${exclusive}평`;
+  return d.unit_type || "평형 미상";
+}
+
+function typeBadgeClass(t) {
+  if (t === "매매") return "bg-violet-100 text-violet-600";
+  if (t === "전세") return "bg-blue-100 text-blue-600";
+  return "bg-orange-100 text-orange-600"; // 월세
+}
+---
+
+{deals.length > 0 && (
+  <section class="max-w-6xl mx-auto px-6 pt-4 pb-10">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-800">거래 완료 매물</h2>
+        <p class="text-slate-500 mt-2">저희가 직접 성사시킨 거래 완료 사례예요.</p>
+      </div>
+      <a href="/deals" class="text-violet-500 font-bold hover:underline shrink-0">전체보기 &rarr;</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      {deals.map((d) => (
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(d.contract_type)}`}>
+            {d.contract_type}
+          </span>
+          <h3 class="text-base font-bold text-slate-800 mt-3">{d.property_name}</h3>
+          <p class="text-sm text-slate-500">{pyeongText(d)}</p>
+          <p class="text-lg font-bold text-violet-500 mt-2">{priceText(d)}</p>
+          {d.balance_date && <p class="text-xs text-slate-400 mt-1">{dateText(d.balance_date)} 거래완료</p>}
+        </div>
+      ))}
+    </div>
+  </section>
+)}

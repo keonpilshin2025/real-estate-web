@@ -19,6 +19,8 @@ export async function GET({ request }) {
       p.partner_agency_id, p.created_at,
       u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
       pa.agency_name AS partner_agency_name,
+      latest_c.deal_status AS latest_deal_status,
+      latest_c.balance_date AS latest_balance_date,
       COALESCE(
         (
           SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
@@ -31,6 +33,13 @@ export async function GET({ request }) {
     FROM properties p
     JOIN real_estate_units u ON u.id = p.unit_id
     LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
+    LEFT JOIN LATERAL (
+      SELECT c2.deal_status, c2.balance_date
+      FROM contracts c2
+      WHERE c2.property_id = p.id AND c2.is_deleted = FALSE
+      ORDER BY c2.created_at DESC
+      LIMIT 1
+    ) latest_c ON true
     WHERE
       (${type} = '' OR u.property_type = ${type})
       AND (${q} = '' OR u.property_name ILIKE ${'%' + q + '%'} OR u.dong ILIKE ${'%' + q + '%'} OR u.ho ILIKE ${'%' + q + '%'} OR u.address ILIKE ${'%' + q + '%'})

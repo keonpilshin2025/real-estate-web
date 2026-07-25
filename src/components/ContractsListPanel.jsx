@@ -187,10 +187,18 @@ export default function ContractsListPanel() {
   const [exporting, setExporting] = useState(false);
   const [sortField, setSortField] = useState(null); // null(기본: 진행상태 우선) | "balance_date" | "move_in_date"
   const [sortDir, setSortDir] = useState("asc");
+  const [statusFilter, setStatusFilter] = useState("전체"); // 전체 | 진행 | 완료
 
-  function applySort(list) {
-    if (!sortField) return sortByStatusThenBalanceDate(list);
-    return [...list].sort((a, b) => {
+  function applyFilterAndSort(list) {
+    const filtered =
+      statusFilter === "전체"
+        ? list
+        : list.filter((c) => {
+            const s = computeDealStatus(c.deal_status, c.balance_date);
+            return statusFilter === "완료" ? s === "완료" : s !== "완료";
+          });
+    if (!sortField) return sortByStatusThenBalanceDate(filtered);
+    return [...filtered].sort((a, b) => {
       const av = a[sortField];
       const bv = b[sortField];
       if (!av && !bv) return 0;
@@ -220,14 +228,14 @@ export default function ContractsListPanel() {
     const data = await res.json();
     const deduped = dedupeCompletedByClient(Array.isArray(data) ? data : []);
     setBaseContracts(deduped);
-    setContracts(applySort(deduped));
+    setContracts(applyFilterAndSort(deduped));
     setLoading(false);
   }
 
   useEffect(() => {
-    setContracts(applySort(baseContracts));
+    setContracts(applyFilterAndSort(baseContracts));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortField, sortDir]);
+  }, [sortField, sortDir, statusFilter]);
 
   useEffect(() => { fetchContracts(); }, []);
 
@@ -259,6 +267,15 @@ export default function ContractsListPanel() {
           placeholder="매물명/동/호수/고객명 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs shrink-0"
+        >
+          <option value="전체">전체</option>
+          <option value="진행">진행</option>
+          <option value="완료">완료</option>
+        </select>
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
         <button
           type="button"

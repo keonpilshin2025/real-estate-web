@@ -22,13 +22,13 @@ export async function PUT({ request, params }) {
   const sql = getDb(env.DATABASE_URL);
   const id = Number(params.id);
   const body = await request.json();
-  const { property_name, property_type, dong, ho, unit_type, unit_sqm, usage_type, address } = body;
+  const { property_name, property_type, dong, ho, unit_type, unit_sqm, unit_supply_sqm, usage_type, address } = body;
 
   const [row] = await sql`
     UPDATE real_estate_units SET
       property_name = ${property_name}, property_type = ${property_type},
       dong = ${dong || null}, ho = ${ho || null}, unit_type = ${unit_type || null},
-      unit_sqm = ${unit_sqm || null},
+      unit_sqm = ${unit_sqm || null}, unit_supply_sqm = ${unit_supply_sqm || null},
       usage_type = ${usage_type || null}, address = ${address || null},
       updated_at = now()
     WHERE id = ${id}

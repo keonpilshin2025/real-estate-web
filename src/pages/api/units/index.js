@@ -33,7 +33,7 @@ export async function GET({ request }) {
 export async function POST({ request }) {
   const sql = getDb(env.DATABASE_URL);
   const body = await request.json();
-  const { property_name, property_type, dong, ho, unit_type, unit_sqm, usage_type, address } = body;
+  const { property_name, property_type, dong, ho, unit_type, unit_sqm, unit_supply_sqm, usage_type, address } = body;
 
   if (!property_name || !property_type) {
     return new Response(JSON.stringify({ error: "매물명과 매물구분은 필수입니다." }), { status: 400 });
@@ -54,8 +54,8 @@ export async function POST({ request }) {
   }
 
   const [row] = await sql`
-    INSERT INTO real_estate_units (property_name, property_type, dong, ho, unit_type, unit_sqm, usage_type, address)
-    VALUES (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${unit_type || null}, ${unit_sqm || null}, ${usage_type || null}, ${address || null})
+    INSERT INTO real_estate_units (property_name, property_type, dong, ho, unit_type, unit_sqm, unit_supply_sqm, usage_type, address)
+    VALUES (${property_name}, ${property_type}, ${dong || null}, ${ho || null}, ${unit_type || null}, ${unit_sqm || null}, ${unit_supply_sqm || null}, ${usage_type || null}, ${address || null})
     RETURNING *
   `;
 

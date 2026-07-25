@@ -7,6 +7,16 @@ const TRANSACTION_TYPES = ["매매", "전세", "월세"];
 const EOK = 100000000;
 const MAN = 10000;
 
+// 그 매물의 가장 최근 계약 기준으로 진행/완료 판단 (계약이 아예 없으면 "진행"=아직 거래 안 됨)
+function computeDealStatus(status, balanceDate) {
+  if (status === "완료") return "완료";
+  if (balanceDate) {
+    const d = new Date(balanceDate);
+    if (!isNaN(d.getTime()) && d.getTime() <= Date.now()) return "완료";
+  }
+  return "진행";
+}
+
 function formatEokMan(n) {
   if (!n) return "-";
   const num = Number(n);
@@ -50,6 +60,11 @@ const EXCEL_COLUMNS = [
   { key: "property_type", label: "구분" },
   { key: "property_name", label: "매물명" },
   { key: "dong", label: "동", format: (v) => stripDongSuffix(v) || "-" },
+  {
+    key: "latest_deal_status",
+    label: "거래상태",
+    format: (_v, row) => computeDealStatus(row.latest_deal_status, row.latest_balance_date),
+  },
   { key: "ho", label: "호수" },
   { key: "unit_type", label: "평형" },
   { key: "transaction_type", label: "거래유형" },
@@ -96,6 +111,8 @@ export default function PropertiesPanel() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("전체"); // 전체 | 진행 | 완료
+  const [baseProperties, setBaseProperties] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [openDetailId, setOpenDetailId] = useState(null);
 
@@ -114,14 +131,29 @@ export default function PropertiesPanel() {
   const [selectedOwners, setSelectedOwners] = useState([]);
   const [primaryOwnerId, setPrimaryOwnerId] = useState(null);
 
+  function applyStatusFilter(list) {
+    if (statusFilter === "전체") return list;
+    return list.filter((p) => {
+      const s = computeDealStatus(p.latest_deal_status, p.latest_balance_date);
+      return statusFilter === "완료" ? s === "완료" : s !== "완료";
+    });
+  }
+
   async function fetchProperties() {
     setLoading(true);
     const params = new URLSearchParams({ q });
     const res = await fetch(`/api/properties?${params.toString()}`);
     const data = await res.json();
-    setProperties(Array.isArray(data) ? data : []);
+    const base = Array.isArray(data) ? data : [];
+    setBaseProperties(base);
+    setProperties(applyStatusFilter(base));
     setLoading(false);
   }
+
+  useEffect(() => {
+    setProperties(applyStatusFilter(baseProperties));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   async function fetchAgencies() {
     const res = await fetch("/api/partner-agencies");
@@ -348,6 +380,15 @@ export default function PropertiesPanel() {
           placeholder="매물명/동/호수/주소 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs shrink-0"
+        >
+          <option value="전체">전체</option>
+          <option value="진행">진행</option>
+          <option value="완료">완료</option>
+        </select>
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
         <button
           type="button"
@@ -375,14 +416,15 @@ export default function PropertiesPanel() {
               <th className="px-4 py-3 font-medium">평형</th>
               <th className="px-4 py-3 font-medium">거래유형</th>
               <th className="px-4 py-3 font-medium">희망가</th>
+              <th className="px-4 py-3 font-medium">거래상태</th>
               <th className="px-4 py-3 font-medium">중개유형</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && properties.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && properties.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 매물이 없습니다.</td></tr>}
             {properties.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3">
@@ -400,6 +442,18 @@ export default function PropertiesPanel() {
                   {p.transaction_type === "월세"
                     ? `${formatEokMan(p.asking_deposit)} / ${formatEokMan(p.asking_monthly_rent)}`
                     : formatEokMan(p.asking_price)}
+                </td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const status = computeDealStatus(p.latest_deal_status, p.latest_balance_date);
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        status === "완료" ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-500"
+                      }`}>
+                        {status}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {p.partner_agency_name ? (

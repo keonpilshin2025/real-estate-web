@@ -53,6 +53,15 @@ function sortByBalanceDate(list, dir = "asc") {
   });
 }
 
+function computeDealStatus(status, balanceDate) {
+  if (status === "완료") return "완료";
+  if (balanceDate) {
+    const d = new Date(balanceDate);
+    if (!isNaN(d.getTime()) && d.getTime() <= Date.now()) return "완료";
+  }
+  return status || "진행";
+}
+
 const EXCEL_COLUMNS = [
   { key: "contract_type", label: "계약유형" },
   { key: "brokerage_type", label: "중개유형" },
@@ -158,9 +167,11 @@ const emptyForm = {
 
 export default function ContractMapping() {
   const [contracts, setContracts] = useState([]);
+  const [baseContracts, setBaseContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [balanceSortDir, setBalanceSortDir] = useState("asc");
+  const [statusFilter, setStatusFilter] = useState("전체"); // 전체 | 진행 | 완료
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -187,20 +198,38 @@ export default function ContractMapping() {
   const [moveInTouched, setMoveInTouched] = useState(false);
   const [downPaymentTouched, setDownPaymentTouched] = useState(false);
 
+  function applyFilterAndSort(list, dir) {
+    const filtered =
+      statusFilter === "전체"
+        ? list
+        : list.filter((c) => {
+            const s = computeDealStatus(c.deal_status, c.balance_date);
+            return statusFilter === "완료" ? s === "완료" : s !== "완료";
+          });
+    return sortByBalanceDate(filtered, dir);
+  }
+
   async function fetchContracts() {
     setLoading(true);
-    const params = new URLSearchParams({ q });
+    const params = new URLSearchParams({ q, view: "contracts" });
     const res = await fetch(`/api/contracts?${params.toString()}`);
     const data = await res.json();
-    setContracts(sortByBalanceDate(Array.isArray(data) ? data : [], balanceSortDir));
+    const base = Array.isArray(data) ? data : [];
+    setBaseContracts(base);
+    setContracts(applyFilterAndSort(base, balanceSortDir));
     setLoading(false);
   }
 
   function toggleBalanceSort() {
     const next = balanceSortDir === "asc" ? "desc" : "asc";
     setBalanceSortDir(next);
-    setContracts((prev) => sortByBalanceDate(prev, next));
+    setContracts(applyFilterAndSort(baseContracts, next));
   }
+
+  useEffect(() => {
+    setContracts(applyFilterAndSort(baseContracts, balanceSortDir));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -218,7 +247,7 @@ export default function ContractMapping() {
   async function handleExportExcel() {
     setExporting(true);
     try {
-      const res = await fetch("/api/contracts");
+      const res = await fetch("/api/contracts?view=contracts");
       const data = await res.json();
       exportToExcel(sortByBalanceDate(Array.isArray(data) ? data : []), EXCEL_COLUMNS, `계약목록_${todayStr()}.xlsx`);
     } catch (e) {
@@ -477,6 +506,15 @@ export default function ContractMapping() {
           placeholder="매물명/동/호수/고객명 검색"
           className="border border-slate-200 rounded-full h-9 px-3 text-xs flex-1 min-w-[160px]"
         />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-slate-200 rounded-full h-9 px-3 text-xs shrink-0"
+        >
+          <option value="전체">전체</option>
+          <option value="진행">진행</option>
+          <option value="완료">완료</option>
+        </select>
         <button type="submit" className="bg-violet-400 text-white rounded-full h-9 px-4 text-xs font-medium hover:bg-violet-500 whitespace-nowrap shrink-0">검색</button>
         <button
           type="button"

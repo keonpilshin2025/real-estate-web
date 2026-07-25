@@ -1,5 +1,6 @@
 ---
-// 서버에서 직접 DB 조회 (공개용 API와 동일 로직, 요청 시점에 렌더링)
+// 서버에서 직접 DB 조회 (요청 시점에 렌더링). 홈에는 최신 6개만 미리보기로 보여주고,
+// 전체는 /listings 페이지에서 스크롤로 볼 수 있게 함.
 import { env } from "cloudflare:workers";
 import { getDb } from "../lib/db.js";
 
@@ -9,28 +10,28 @@ try {
   const sql = getDb(env.DATABASE_URL);
   listings = await sql`
     SELECT
-      p.id, u.property_name, u.property_type, u.dong, u.unit_type,
+      p.id, u.property_name, u.property_type, u.dong, u.unit_sqm,
       p.transaction_type, p.asking_price, p.asking_deposit, p.asking_monthly_rent,
       p.features, u.address
     FROM properties p
     JOIN real_estate_units u ON u.id = p.unit_id
     WHERE NOT EXISTS (
+      -- 이 매물에 대기/진행/완료 상관없이 계약이 하나라도 걸려있으면 더 이상 "나와있는 매물"이 아니므로 제외
       SELECT 1 FROM contracts c
-      WHERE c.property_id = p.id
-        AND c.is_deleted = FALSE
-        AND c.contract_type = '매매'
-        AND (c.deal_status = '완료' OR (c.balance_date IS NOT NULL AND c.balance_date <= now()))
+      WHERE c.property_id = p.id AND c.is_deleted = FALSE
     )
     ORDER BY p.created_at DESC
-    LIMIT 20
+    LIMIT 6
   `;
 } catch (e) {
   listings = [];
 }
 
-// 동 표기에서 '동' 글자 제거 (관리자 화면과 동일한 표기 규칙)
 function stripDongSuffix(dong) {
   return dong ? dong.replace(/동$/, "") : dong;
+}
+function sqmText(v) {
+  return v ? `${Number(v).toFixed(1)}㎡` : null;
 }
 
 const EOK = 100000000;
@@ -61,41 +62,35 @@ function typeBadgeClass(t) {
 ---
 
 {listings.length > 0 && (
-  <section id="hidden-listing" class="max-w-6xl mx-auto px-6 py-16 scroll-mt-24">
-    <div class="mb-8">
-      <h2 class="text-2xl md:text-3xl font-bold text-slate-800">지금 나와있는 매물</h2>
-      <p class="text-slate-500 mt-2">여수동 센트럴타운 · 연꽃마을4단지 · 산들마을2단지 등 실시간 등록 매물이에요.</p>
+  <section id="hidden-listing" class="max-w-6xl mx-auto px-6 pt-10 pb-4 scroll-mt-24">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-800">진행 중인 매물</h2>
+        <p class="text-slate-500 mt-2">여수동 센트럴타운 · 연꽃마을4단지 · 산들마을2단지 등 실시간 등록 매물이에요.</p>
+      </div>
+      <a href="/listings" class="text-violet-500 font-bold hover:underline shrink-0">전체보기 &rarr;</a>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-      <table class="w-full text-xs sm:text-sm min-w-[640px]">
-        <thead>
-          <tr class="bg-slate-50 text-slate-500 text-left">
-            <th class="px-4 py-3 font-medium">매물명</th>
-            <th class="px-4 py-3 font-medium">구분</th>
-            <th class="px-4 py-3 font-medium">동</th>
-            <th class="px-4 py-3 font-medium">평형</th>
-            <th class="px-4 py-3 font-medium">거래유형</th>
-            <th class="px-4 py-3 font-medium">희망가</th>
-          </tr>
-        </thead>
-        <tbody>
-          {listings.map((p) => (
-            <tr class="border-t border-slate-100 hover:bg-slate-50">
-              <td class="px-4 py-3 font-medium text-slate-800">{p.property_name}</td>
-              <td class="px-4 py-3 text-slate-600">{p.property_type || "-"}</td>
-              <td class="px-4 py-3 text-slate-600">{stripDongSuffix(p.dong) || "-"}</td>
-              <td class="px-4 py-3 text-slate-600">{p.unit_type || "-"}</td>
-              <td class="px-4 py-3">
-                <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(p.transaction_type)}`}>
-                  {p.transaction_type || "문의"}
-                </span>
-              </td>
-              <td class="px-4 py-3 font-semibold text-violet-500">{priceText(p)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    {/* 모바일: 가로 스와이프 / md 이상: 3열 그리드 */}
+    <div class="flex md:grid md:grid-cols-3 gap-5 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0">
+      {listings.map((p) => (
+        <div class="shrink-0 w-[78vw] sm:w-72 md:w-auto snap-start bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center gap-2 mb-3">
+            <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(p.transaction_type)}`}>
+              {p.transaction_type || "문의"}
+            </span>
+            <span class="text-[11px] text-slate-400">{p.property_type}</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 mb-1">{p.property_name}</h3>
+          <p class="text-sm text-slate-500 mb-3">
+            {[stripDongSuffix(p.dong), sqmText(p.unit_sqm)].filter(Boolean).join(" · ") || "동/면적 문의"}
+          </p>
+          <p class="text-xl font-bold text-violet-500 mb-1">{priceText(p)}</p>
+          {p.features && (
+            <p class="text-sm text-slate-600 line-clamp-2 mt-2">{p.features}</p>
+          )}
+        </div>
+      ))}
     </div>
   </section>
 )}

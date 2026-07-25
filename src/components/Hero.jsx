@@ -1,6 +1,6 @@
 export default function Hero({ contact = "031-721-0082" }) {
   return (
-    <section className="bg-gradient-to-br from-indigo-50 via-violet-50 to-orange-50 py-16 px-6 text-center rounded-3xl">
+    <section className="bg-gradient-to-br from-indigo-50 via-violet-50 to-orange-50 py-10 px-6 text-center rounded-3xl">
       <span className="inline-block bg-white text-violet-500 text-xs font-medium px-4 py-1.5 rounded-full mb-4 border border-violet-100 shadow-sm">
         성남 여수동 전문
       </span>
@@ -12,7 +12,7 @@ export default function Hero({ contact = "031-721-0082" }) {
       </h2>
 
       <p className="text-sm md:text-base text-slate-500 mb-8">
-        믿을 수 있는 상담, 센트럴이 약속드립니다
+        믿을 수 있는 상담, 센트럴공인중개사가 약속드립니다
       </p>
 
       <div className="flex flex-col sm:flex-row justify-center gap-3">

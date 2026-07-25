@@ -1,0 +1,118 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+import { env } from "cloudflare:workers";
+import { getDb } from "../lib/db.js";
+
+export const prerender = false;
+
+let listings = [];
+
+try {
+  const sql = getDb(env.DATABASE_URL);
+  listings = await sql`
+    SELECT
+      p.id, u.property_name, u.property_type, u.dong, u.unit_sqm,
+      p.transaction_type, p.asking_price, p.asking_deposit, p.asking_monthly_rent,
+      p.features, u.address
+    FROM properties p
+    JOIN real_estate_units u ON u.id = p.unit_id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM contracts c
+      WHERE c.property_id = p.id AND c.is_deleted = FALSE
+    )
+    ORDER BY p.created_at DESC
+    LIMIT 200
+  `;
+} catch (e) {
+  listings = [];
+}
+
+function stripDongSuffix(dong) {
+  return dong ? dong.replace(/동$/, "") : dong;
+}
+function sqmText(v) {
+  return v ? `${Number(v).toFixed(1)}㎡` : null;
+}
+
+const EOK = 100000000;
+const MAN = 10000;
+function formatEokMan(n) {
+  if (!n) return null;
+  const num = Number(n);
+  const eok = Math.floor(num / EOK);
+  const man = Math.floor((num % EOK) / MAN);
+  const parts = [];
+  if (eok) parts.push(`${eok}억`);
+  if (man) parts.push(`${man.toLocaleString()}만원`);
+  return parts.length ? parts.join(" ") : "0원";
+}
+function priceText(p) {
+  if (p.transaction_type === "월세") {
+    const d = formatEokMan(p.asking_deposit) || "0원";
+    const m = formatEokMan(p.asking_monthly_rent) || "0원";
+    return `${d} / ${m}`;
+  }
+  return formatEokMan(p.asking_price) || "가격 문의";
+}
+function typeBadgeClass(t) {
+  if (t === "매매") return "bg-violet-100 text-violet-600";
+  if (t === "전세") return "bg-blue-100 text-blue-600";
+  return "bg-orange-100 text-orange-600"; // 월세
+}
+---
+<Layout
+  title="전체 매물 보기"
+  description="여수동 센트럴타운, 연꽃마을4단지, 산들마을2단지의 지금 나와있는 매물을 전체 확인해보세요."
+>
+  <Container>
+    <header class="flex items-center justify-between my-6">
+      <a href="/" class="text-lg font-bold text-slate-800">센트럴공인중개사</a>
+      <a href="/" class="text-sm text-slate-500 hover:text-violet-500 transition">← 홈으로</a>
+    </header>
+
+    <main class="max-w-5xl mx-auto pb-20">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">전체 매물 보기</h1>
+      <p class="text-slate-500 mb-10">
+        지금 나와있는 매물 {listings.length}건이에요. 궁금한 매물은 편하게 문의해주세요.
+      </p>
+
+      {listings.length === 0 ? (
+        <p class="text-slate-400 text-center py-20">지금은 준비 중인 매물이 없어요.</p>
+      ) : (
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+          {listings.map((p) => (
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
+              <div class="flex items-center gap-2 mb-3">
+                <span class={`text-[11px] font-medium px-2.5 py-1 rounded-full ${typeBadgeClass(p.transaction_type)}`}>
+                  {p.transaction_type || "문의"}
+                </span>
+                <span class="text-[11px] text-slate-400">{p.property_type}</span>
+              </div>
+              <h3 class="text-lg font-bold text-slate-800 mb-1">{p.property_name}</h3>
+              <p class="text-sm text-slate-500 mb-3">
+                {[stripDongSuffix(p.dong), sqmText(p.unit_sqm)].filter(Boolean).join(" · ") || "동/면적 문의"}
+              </p>
+              <p class="text-xl font-bold text-violet-500 mb-1">{priceText(p)}</p>
+              {p.features && (
+                <p class="text-sm text-slate-600 line-clamp-2 mt-2">{p.features}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div class="mt-10 bg-violet-50 rounded-2xl p-6 text-center">
+        <p class="text-sm text-slate-600 mb-4">
+          원하는 조건의 매물이 안 보이시면, 편하게 문의해주세요.
+        </p>
+        <a
+          href="tel:031-721-0082"
+          class="inline-block bg-violet-400 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-violet-500 transition"
+        >
+          전화 상담 031-721-0082
+        </a>
+      </div>
+    </main>
+  </Container>
+</Layout>

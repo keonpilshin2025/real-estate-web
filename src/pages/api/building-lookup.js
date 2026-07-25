@@ -105,21 +105,33 @@ export async function GET({ request }) {
     // 전유부: 개별 동/호수별 정보. 동을 입력했으면 그 동만 서버에서 걸러서 가져옴
     const exposItems = await callApi("getBrExposPubuseAreaInfo", { sigunguCd, bjdongCd, bun, ji, dongNm });
 
-    const mainPurps = titleItems[0]?.mainPurpsCdNm || titleItems[0]?.etcPurps || "";
+    const mainPurps = titleItems[0]?.etcPurps || titleItems[0]?.mainPurpsCdNm || "";
     const bldNm = titleItems[0]?.bldNm || "";
 
     // 동/호수별로 정리 (전유 면적 위주로, 중복 제거)
-    const seen = new Set();
-    const units = [];
+    // 동/호수별로 "전유" 면적과 "공용" 면적을 각각 합산 (같은 호수에 전유 행 여러 개 + 공용 행 여러 개가 따로 옴)
+    const unitMap = new Map();
     for (const it of exposItems) {
       const dongNmItem = it.dongNm || "";
       const hoNm = it.hoNm || "";
-      const area = it.area ? Number(it.area) : null;
+      if (!dongNmItem && !hoNm) continue;
+      const area = it.area ? Number(it.area) : 0;
+      const gb = it.exposPubuseGbCdNm || it.exposPubuseGbCd || "";
       const key = `${dongNmItem}__${hoNm}`;
-      if (seen.has(key) || (!dongNmItem && !hoNm)) continue;
-      seen.add(key);
-      units.push({ dong: dongNmItem, ho: hoNm, sqm: area });
+      if (!unitMap.has(key)) unitMap.set(key, { dong: dongNmItem, ho: hoNm, exclusiveSqm: 0, commonSqm: 0 });
+      const u = unitMap.get(key);
+      if (gb.includes("공용")) {
+        u.commonSqm += area;
+      } else {
+        u.exclusiveSqm += area; // 분류가 안 잡히면 일단 전유로 취급
+      }
     }
+    const units = Array.from(unitMap.values()).map((u) => ({
+      dong: u.dong,
+      ho: u.ho,
+      sqm: u.exclusiveSqm || null, // 전용면적
+      supplySqm: u.exclusiveSqm || u.commonSqm ? Math.round((u.exclusiveSqm + u.commonSqm) * 100) / 100 : null, // 공급면적(전유+공용 근사치)
+    }));
 
     return new Response(JSON.stringify({ bldNm, mainPurps, units }), {
       status: 200,

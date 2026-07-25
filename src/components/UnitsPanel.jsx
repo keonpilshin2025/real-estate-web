@@ -18,6 +18,7 @@ const EXCEL_COLUMNS = [
   { key: "ho", label: "호수" },
   { key: "unit_type", label: "평형" },
   { key: "unit_sqm", label: "전용면적(㎡)" },
+  { key: "unit_supply_sqm", label: "공급면적(㎡)" },
   { key: "usage_type", label: "사용유형" },
   { key: "address", label: "주소" },
   { key: "property_id", label: "매물 연결여부", format: (v) => (v ? "연결됨" : "미연결") },
@@ -25,7 +26,7 @@ const EXCEL_COLUMNS = [
 
 const emptyForm = {
   property_name: "", property_type: "", dong: "", ho: "",
-  address: "", unit_type: "", unit_sqm: "", usage_type: "",
+  address: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "", usage_type: "",
 };
 
 export default function UnitsPanel() {
@@ -66,7 +67,7 @@ export default function UnitsPanel() {
     if (s.includes("아파트")) return "아파트";
     if (s.includes("다세대") || s.includes("연립")) return "빌라";
     if (s.includes("오피스텔")) return "오피스텔";
-    return "기타";
+    return null; // 확실히 매칭 안 되면 null -> 이미 선택해둔 값을 안 건드림
   }
 
   async function handleBuildingLookup() {
@@ -102,11 +103,12 @@ export default function UnitsPanel() {
   function applyLookupUnit(u) {
     setForm((f) => ({
       ...f,
-      property_type: guessPropertyType(lookupResult?.mainPurps),
+      property_type: guessPropertyType(lookupResult?.mainPurps) || f.property_type,
       dong: u.dong ? (u.dong.endsWith("동") ? u.dong : u.dong + "동") : f.dong,
       ho: u.ho || f.ho,
-      unit_sqm: u.sqm ? String(u.sqm) : f.unit_sqm,
-      unit_type: u.sqm ? `${Math.round((u.sqm / PYEONG_TO_SQM) * 10) / 10}평` : f.unit_type,
+      unit_sqm: u.sqm ? String(u.sqm) : f.unit_sqm, // 전용면적
+      unit_supply_sqm: u.supplySqm ? String(u.supplySqm) : f.unit_supply_sqm, // 공급면적
+      unit_type: (u.supplySqm || u.sqm) ? `${Math.round(((u.supplySqm || u.sqm) / PYEONG_TO_SQM) * 10) / 10}평` : f.unit_type,
     }));
     setLookupResult(null);
   }
@@ -152,7 +154,7 @@ export default function UnitsPanel() {
   function handleNameChange(value) {
     if (value === "__other__") {
       setIsOtherName(true);
-      setForm({ ...form, property_name: "", dong: "", ho: "", address: "", unit_type: "", unit_sqm: "" });
+      setForm({ ...form, property_name: "", dong: "", ho: "", address: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "" });
       return;
     }
     setIsOtherName(false);
@@ -166,6 +168,7 @@ export default function UnitsPanel() {
       ho: "",
       unit_type: "",
       unit_sqm: "",
+      unit_supply_sqm: "",
     });
   }
 
@@ -174,7 +177,7 @@ export default function UnitsPanel() {
   const dongInfo = isKnown && form.dong ? presets[form.property_name]?.dongs?.[form.dong] : null;
 
   function handleDongChange(dong) {
-    setForm({ ...form, dong, ho: "", unit_type: "", unit_sqm: "" });
+    setForm({ ...form, dong, ho: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "" });
   }
 
   // 평형(unit_type) 선택 시, 알려진 단지면 그 평형의 평방미터를 자동으로 채움
@@ -236,6 +239,7 @@ export default function UnitsPanel() {
       address: u.address || "",
       unit_type: u.unit_type || "",
       unit_sqm: u.unit_sqm || "",
+      unit_supply_sqm: u.unit_supply_sqm || "",
       usage_type: u.usage_type || "",
     });
     setIsOtherName(!KNOWN_COMPLEXES.includes(u.property_name));
@@ -284,7 +288,7 @@ export default function UnitsPanel() {
       </p>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
-        <table className="w-full text-xs min-w-[900px]">
+        <table className="w-full text-xs min-w-[980px]">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">물건명</th>
@@ -293,14 +297,15 @@ export default function UnitsPanel() {
               <th className="px-4 py-3 font-medium">호수</th>
               <th className="px-4 py-3 font-medium">평형</th>
               <th className="px-4 py-3 font-medium">전용면적</th>
+              <th className="px-4 py-3 font-medium">공급면적</th>
               <th className="px-4 py-3 font-medium">주소</th>
               <th className="px-4 py-3 font-medium">매물 연결</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
-            {!loading && units.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-slate-400">등록된 물건이 없습니다.</td></tr>}
+            {loading && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>}
+            {!loading && units.length === 0 && <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400">등록된 물건이 없습니다.</td></tr>}
             {units.map((u) => (
               <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-800">{u.property_name}</td>
@@ -309,6 +314,7 @@ export default function UnitsPanel() {
                 <td className="px-4 py-3 text-slate-600">{u.ho || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{u.unit_type || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{u.unit_sqm ? `${u.unit_sqm}㎡` : "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{u.unit_supply_sqm ? `${u.unit_supply_sqm}㎡` : "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{u.address || "-"}</td>
                 <td className="px-4 py-3">
                   {u.property_id ? (
@@ -459,7 +465,7 @@ export default function UnitsPanel() {
               ) : (
                 <>
                   <input
-                    placeholder="평형 (숫자만 입력하면 자동으로 '평' 붙고, 전용면적도 자동 계산돼요)"
+                    placeholder="평형 (숫자만 입력하면 자동으로 '평' 붙고, 공급면적도 자동 계산돼요)"
                     value={form.unit_type}
                     onChange={(e) => setForm({ ...form, unit_type: e.target.value })}
                     onBlur={(e) => {
@@ -469,17 +475,17 @@ export default function UnitsPanel() {
                       setForm((f) => ({
                         ...f,
                         unit_type: isPureNumber ? v + "평" : f.unit_type,
-                        unit_sqm: !f.unit_sqm && !isNaN(num) ? (num * PYEONG_TO_SQM).toFixed(2) : f.unit_sqm,
+                        unit_supply_sqm: !f.unit_supply_sqm && !isNaN(num) ? (num * PYEONG_TO_SQM).toFixed(2) : f.unit_supply_sqm,
                       }));
                     }}
-                    className="border border-slate-200 rounded-lg h-9 px-3"
+                    className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
                   />
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="전용면적(㎡) - 입력하면 평형도 자동 계산돼요"
-                    value={form.unit_sqm}
-                    onChange={(e) => setForm({ ...form, unit_sqm: e.target.value })}
+                    placeholder="공급면적(㎡) - 입력하면 평형도 자동 계산돼요"
+                    value={form.unit_supply_sqm}
+                    onChange={(e) => setForm({ ...form, unit_supply_sqm: e.target.value })}
                     onBlur={(e) => {
                       const num = parseFloat(e.target.value);
                       if (!form.unit_type && !isNaN(num)) {
@@ -487,6 +493,14 @@ export default function UnitsPanel() {
                         setForm((f) => ({ ...f, unit_type: `${pyeong}평` }));
                       }
                     }}
+                    className="border border-slate-200 rounded-lg h-9 px-3"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="전용면적(㎡)"
+                    value={form.unit_sqm}
+                    onChange={(e) => setForm({ ...form, unit_sqm: e.target.value })}
                     className="border border-slate-200 rounded-lg h-9 px-3"
                   />
                 </>
@@ -536,7 +550,10 @@ export default function UnitsPanel() {
                             className="px-3 py-2 cursor-pointer hover:bg-violet-50 flex justify-between"
                           >
                             <span>{[u.dong, u.ho].filter(Boolean).join(" ") || "동/호 정보 없음"}</span>
-                            <span className="text-slate-400">{u.sqm ? `${u.sqm}㎡` : "-"}</span>
+                            <span className="text-slate-400">
+                              {u.supplySqm ? `${u.supplySqm}㎡` : u.sqm ? `${u.sqm}㎡` : "-"}
+                              {u.supplySqm && u.sqm ? ` (전용 ${u.sqm}㎡)` : ""}
+                            </span>
                           </div>
                         ))}
                       </div>

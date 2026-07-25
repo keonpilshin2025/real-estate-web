@@ -19,10 +19,7 @@ export async function GET() {
     JOIN real_estate_units u ON u.id = p.unit_id
     WHERE NOT EXISTS (
       SELECT 1 FROM contracts c
-      WHERE c.property_id = p.id
-        AND c.is_deleted = FALSE
-        AND c.contract_type = '매매'
-        AND (c.deal_status = '완료' OR (c.balance_date IS NOT NULL AND c.balance_date <= now()))
+      WHERE c.property_id = p.id AND c.is_deleted = FALSE
     )
     ORDER BY p.created_at DESC
     LIMIT 20
