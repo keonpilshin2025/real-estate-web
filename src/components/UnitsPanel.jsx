@@ -44,6 +44,7 @@ export default function UnitsPanel() {
 
   // 건축물대장 조회 (기타 물건 등록 시, 집합건물만 해당)
   const [addressMeta, setAddressMeta] = useState(null); // { bcode, jibunAddress }
+  const [manualJibun, setManualJibun] = useState(""); // 다음 API가 지번을 못 줄 때 직접 입력용
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [lookupResult, setLookupResult] = useState(null); // { bldNm, mainPurps, units }
@@ -78,7 +79,7 @@ export default function UnitsPanel() {
     try {
       const params = new URLSearchParams({
         bcode: addressMeta.bcode,
-        jibun: addressMeta.jibunAddress || "",
+        jibun: manualJibun.trim() || addressMeta.jibunAddress || "",
         dong: unitFilterQuery.trim(),
       });
       const res = await fetch(`/api/building-lookup?${params.toString()}`);
@@ -216,6 +217,7 @@ export default function UnitsPanel() {
 
   function resetLookupState() {
     setAddressMeta(null);
+    setManualJibun("");
     setLookupLoading(false);
     setLookupError("");
     setLookupResult(null);
@@ -516,6 +518,13 @@ export default function UnitsPanel() {
 
               {isOtherName && (
                 <div className="col-span-2">
+                  <input
+                    type="text"
+                    value={manualJibun}
+                    onChange={(e) => setManualJibun(e.target.value)}
+                    placeholder="지번 직접 입력 (예: 100-1) - 자동으로 못 찾으면 여기 입력"
+                    className="w-full border border-slate-200 rounded-lg h-9 px-3 mb-2"
+                  />
                   <input
                     type="text"
                     value={unitFilterQuery}

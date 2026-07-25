@@ -96,6 +96,13 @@ export async function GET({ request }) {
   const bjdongCd = bcode.slice(5, 10);
   const { bun, ji } = parseBunJi(jibun);
 
+  if (!bun) {
+    return new Response(
+      JSON.stringify({ error: "이 주소는 지번 정보를 못 찾았어요. 화면의 \"지번 직접 입력\" 칸에 지번(예: 100-1)을 입력하고 다시 시도해주세요." }),
+      { status: 400 }
+    );
+  }
+
   // 동 검색어가 있으면 "807" -> "807동"처럼 맞춰서 서버(정부 API)에 바로 필터 요청 (전체를 안 받아오니 훨씬 빠름)
   const dongNm = dongQuery ? (/^\d+$/.test(dongQuery) ? `${dongQuery}동` : dongQuery) : "";
 
