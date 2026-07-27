@@ -43,17 +43,24 @@ export async function POST({ request }) {
       (memo && String(memo).trim() ? `\n하고 싶은 말: ${String(memo).trim()}` : "");
 
     const results = await Promise.all(
-      chatIds.map((chatId) =>
-        fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chatIds.map(async (chatId) => {
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text }),
-        })
-      )
+        });
+        const body = await res.text();
+        return { chatId, ok: res.ok, status: res.status, body };
+      })
     );
 
-    if (results.some((r) => !r.ok)) {
-      console.error("일부 텔레그램 전송 실패");
+    const failed = results.filter((r) => !r.ok);
+    if (failed.length > 0) {
+      console.error("텔레그램 전송 실패:", JSON.stringify(failed));
+      return new Response(
+        JSON.stringify({ ok: false, error: "텔레그램 전송 실패", detail: failed }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(JSON.stringify({ ok: true }), {
