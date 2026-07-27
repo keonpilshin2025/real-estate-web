@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PhoneInput from "./PhoneInput.jsx";
 
 const PROPERTY_TYPES = [
   { key: "3대장", label: "아파트", desc: "센트럴타운 · 연꽃마을4단지 · 산들마을2단지" },
@@ -106,6 +107,13 @@ export default function PropertyConsultForm() {
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState("");
 
+  function formatPhoneForSend(digits) {
+    if (!digits) return "";
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+  }
+
   function toggleSituation(s) {
     setSituations((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
@@ -137,7 +145,7 @@ export default function PropertyConsultForm() {
           budgetRent,
           situations,
           name,
-          phone,
+          phone: formatPhoneForSend(phone),
           memo,
         }),
       });
@@ -430,10 +438,9 @@ export default function PropertyConsultForm() {
             placeholder="이름 (선택)"
             className="w-full bg-white border border-slate-200 rounded-xl h-12 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
           />
-          <input
-            type="tel"
+          <PhoneInput
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
             placeholder="연락받을 전화번호 *"
             className="w-full bg-white border border-slate-200 rounded-xl h-12 px-4 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
           />
