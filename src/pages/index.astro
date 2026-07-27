@@ -98,6 +98,10 @@ const regNo = "41133-2020-00049";
 			<a href="/" class="text-lg flex items-center">
 			<span class="font-bold text-slate-800 text-2xl">센트럴공인중개사 사무소</span>
 			</a>
+			<!-- 모바일 전용: 로고 옆에 항상 보이는 축약 상담 버튼 -->
+			<a href="/apply" class="lg:hidden bg-violet-400 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-violet-500 transition whitespace-nowrap shrink-0">
+			1분 상담
+			</a>
 		</div>
 
 		<div class="hidden lg:flex items-center gap-6">
@@ -109,8 +113,8 @@ const regNo = "41133-2020-00049";
 			</a>
 			</div>
 			<!-- 강조된 버튼 -->
-			<a href="#contact" class="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition">
-			방문 예약하기
+			<a href="/apply" class="bg-violet-400 text-white px-5 py-2.5 rounded-full font-medium hover:bg-violet-500 transition">
+			1분만에 상담신청
 			</a>
 		</div>
 		</header>
@@ -128,10 +132,12 @@ const regNo = "41133-2020-00049";
       <!-- 3대장 아파트 완료 거래 자랑 -->
       <RecentDeals />
 
-      <!-- 희망 조건 매물 신청 폼 -->
+      <!-- 희망 조건 매물 신청 폼 (임시 비활성화 - /apply 새 상담 페이지로 대체됨) -->
+      <!--
       <div class="px-1 pb-4">
         <InquiryForm client:load />
       </div>
+      -->
 
 		<!-- 사장님 프로필 섹션 -->
 		<section class="max-w-6xl mx-auto px-6 py-12 border-b border-slate-200">
