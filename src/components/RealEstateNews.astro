@@ -1,0 +1,58 @@
+---
+// 부동산 뉴스 미리보기 (최신 6개). 저작권 때문에 제목+짧은 요약만 보여주고,
+// 클릭하면 원문(네이버뉴스 등)으로 새 탭에서 이동.
+import { env } from "cloudflare:workers";
+import { getDb } from "../lib/db.js";
+
+let articles = [];
+
+try {
+  const sql = getDb(env.DATABASE_URL);
+  articles = await sql`
+    SELECT id, title, summary, url, source, published_at, created_at
+    FROM news_articles
+    ORDER BY COALESCE(published_at, created_at) DESC
+    LIMIT 6
+  `;
+} catch (e) {
+  articles = [];
+}
+
+function dateText(a) {
+  const v = a.published_at || a.created_at;
+  if (!v) return "";
+  return String(v).slice(0, 10).replace(/-/g, ".");
+}
+---
+
+{articles.length > 0 && (
+  <section class="max-w-6xl mx-auto px-6 pt-4 pb-10">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-800">여수동 부동산 소식</h2>
+        <p class="text-slate-500 mt-2">지역 부동산·개발 관련 최신 뉴스를 모아드려요.</p>
+      </div>
+      <a href="/news" class="text-violet-500 font-bold hover:underline shrink-0">전체보기 &rarr;</a>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
+      {articles.map((a) => (
+        <a
+          href={a.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-start justify-between gap-4 px-5 py-4 hover:bg-slate-50 transition"
+        >
+          <div class="min-w-0">
+            <p class="font-medium text-slate-800 line-clamp-1">{a.title}</p>
+            {a.summary && <p class="text-sm text-slate-500 line-clamp-1 mt-1">{a.summary}</p>}
+          </div>
+          <div class="text-right shrink-0">
+            {a.source && <p class="text-xs text-slate-400">{a.source}</p>}
+            <p class="text-xs text-slate-400">{dateText(a)}</p>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+)}
