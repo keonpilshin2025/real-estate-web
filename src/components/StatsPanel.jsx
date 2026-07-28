@@ -28,6 +28,8 @@ const SECTIONS = [
     desc: "고객 상담용 — 손님께 바로 보여줄 수 있는 자료예요",
     tabs: [
       { key: "by-complex", label: "단지별" },
+      { key: "by-dong", label: "동별" },
+      { key: "by-floor", label: "층별" },
       { key: "by-unit-type", label: "평형별" },
       { key: "price-trend", label: "가격 동향" },
     ],
@@ -190,6 +192,61 @@ export default function StatsPanel() {
               })()}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 동별 시세 (같은 단지 안에서도 동마다 다름) */}
+      {!loading && subTab === "by-dong" && Array.isArray(data) && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          {data.length === 0 ? (
+            <p className="text-slate-400 text-xs text-center py-8">완료된 매매 데이터가 없어요.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {(() => {
+                const max = Math.max(...data.map((d) => Number(d.avg_price) || 0));
+                return data.map((d) => (
+                  <BarRow
+                    key={`${d.property_name}-${d.dong}`}
+                    label={`${d.property_name} ${d.dong}`}
+                    sub={`${d.deal_count}건 · 평균 ${formatEokMan(d.avg_price)} · ${formatEokMan(d.min_price)}~${formatEokMan(d.max_price)}`}
+                    value={Number(d.avg_price)}
+                    max={max}
+                    colorClass="bg-pink-400"
+                  />
+                ));
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 층대별 시세 - 호수가 순수 숫자(표준 넘버링)인 데이터만 집계됨 */}
+      {!loading && subTab === "by-floor" && Array.isArray(data) && (
+        <div>
+          <p className="text-[11px] text-slate-400 mb-2">
+            * 호수 표기가 표준방식(끝 2자리=호, 앞자리=층)인 물건만 집계돼요. 3대장 아파트 기준으로 정확해요.
+          </p>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            {data.length === 0 ? (
+              <p className="text-slate-400 text-xs text-center py-8">완료된 매매 데이터가 없어요.</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {(() => {
+                  const max = Math.max(...data.map((d) => Number(d.avg_price) || 0));
+                  return data.map((d) => (
+                    <BarRow
+                      key={d.floor_band}
+                      label={d.floor_band}
+                      sub={`${d.deal_count}건 · 평균 ${formatEokMan(d.avg_price)}`}
+                      value={Number(d.avg_price)}
+                      max={max}
+                      colorClass="bg-amber-400"
+                    />
+                  ));
+                })()}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
