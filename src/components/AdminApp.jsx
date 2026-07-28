@@ -5,6 +5,7 @@ import UnitsPanel from "./UnitsPanel.jsx";
 import ClientsPanel from "./ClientsPanel.jsx";
 import ContractMapping from "./ContractMapping.jsx";
 import ContractsListPanel from "./ContractsListPanel.jsx";
+import StatsPanel from "./StatsPanel.jsx";
 
 const TABS = [
   { key: "overview", label: "목록" },
@@ -13,6 +14,7 @@ const TABS = [
   { key: "properties", label: "매물" },
   { key: "contracts", label: "계약" },
   { key: "agencies", label: "부동산" },
+  { key: "stats", label: "통계" },
 ];
 
 export default function AdminApp() {
@@ -58,6 +60,7 @@ export default function AdminApp() {
       {tab === "properties" && <PropertiesPanel />}
       {tab === "contracts" && <ContractMapping />}
       {tab === "agencies" && <PartnerAgenciesPanel />}
+      {tab === "stats" && <StatsPanel />}
     </div>
   );
 }
