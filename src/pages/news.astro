@@ -13,7 +13,7 @@ try {
   articles = await sql`
     SELECT id, title, summary, url, source, published_at, created_at
     FROM news_articles
-    ORDER BY COALESCE(published_at, created_at) DESC
+    ORDER BY created_at DESC
     LIMIT 200
   `;
 } catch (e) {
