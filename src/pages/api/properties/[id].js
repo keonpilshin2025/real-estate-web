@@ -12,80 +12,75 @@ export async function GET({ params, request }) {
   const contextClientId = clientIdParam ? Number(clientIdParam) : null;
 
   try {
-  // 서로 의존하지 않는 쿼리 3개를 동시에 실행 (순서대로 하나씩 기다리지 않음)
-  const [rowResult, owners, ownerHistory] = await Promise.all([
-    sql`
-      SELECT
-        p.id, p.unit_id, p.features, p.memo, p.transaction_type,
-        p.asking_price, p.asking_deposit, p.asking_monthly_rent,
-        p.partner_agency_id, p.created_at, p.updated_at,
-        u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address, u.address_detail,
-        pa.agency_name AS partner_agency_name,
-        c.id AS active_contract_id,
-        c.contract_type AS final_contract_type,
-        c.price AS final_price,
-        c.deposit AS final_deposit,
-        c.monthly_rent AS final_monthly_rent,
-        c.balance_date AS final_balance_date,
-        c.deal_status AS final_deal_status,
-        c.seller_name_snapshot AS final_seller_name,
-        c.seller_phone_snapshot AS final_seller_phone,
-        c.seller_client_id_snapshot AS final_seller_client_id
-      FROM properties p
-      JOIN real_estate_units u ON u.id = p.unit_id
-      LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
-      LEFT JOIN LATERAL (
-        SELECT * FROM contracts c2
-        WHERE c2.property_id = p.id
-          AND c2.is_deleted = FALSE
-          AND (
-            -- client_id가 지정되면 정확히 그 계약(그 시점 그대로)을, 아니면 현재 진행 중인 계약을 사용
-            (${contextClientId}::int IS NOT NULL AND c2.client_id = ${contextClientId})
-            OR (${contextClientId}::int IS NULL AND (c2.balance_date IS NULL OR c2.balance_date >= now()))
-          )
-        ORDER BY c2.created_at DESC
-        LIMIT 1
-      ) c ON true
-      WHERE p.id = ${id}
-    `,
-    sql`
-      SELECT oc.id, oc.name, oc.phone, oc.ssn_encrypted, po.is_primary
-      FROM property_owners po
-      JOIN clients oc ON oc.id = po.client_id
-      WHERE po.property_id = ${id} AND po.removed_at IS NULL
-      ORDER BY po.is_primary DESC, po.id
-    `,
-    sql`
-      SELECT oc.id, oc.name, oc.phone, po.created_at AS since, po.removed_at AS until
-      FROM property_owners po
-      JOIN clients oc ON oc.id = po.client_id
-      WHERE po.property_id = ${id}
-      ORDER BY po.created_at ASC
-    `,
-  ]);
+  // 물건정보/소유자목록/소유이력/매도인 주민번호까지 전부 한 번의 쿼리(왕복 1회)로 가져옴
+  const [row] = await sql`
+    SELECT
+      p.id, p.unit_id, p.features, p.memo, p.transaction_type,
+      p.asking_price, p.asking_deposit, p.asking_monthly_rent,
+      p.partner_agency_id, p.created_at, p.updated_at,
+      u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address, u.address_detail,
+      pa.agency_name AS partner_agency_name,
+      c.id AS active_contract_id,
+      c.contract_type AS final_contract_type,
+      c.price AS final_price,
+      c.deposit AS final_deposit,
+      c.monthly_rent AS final_monthly_rent,
+      c.balance_date AS final_balance_date,
+      c.deal_status AS final_deal_status,
+      c.seller_name_snapshot AS final_seller_name,
+      c.seller_phone_snapshot AS final_seller_phone,
+      c.seller_client_id_snapshot AS final_seller_client_id,
+      seller_client.ssn_encrypted AS final_seller_ssn_encrypted,
+      COALESCE(
+        (SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'ssn_encrypted', oc.ssn_encrypted, 'is_primary', po.is_primary) ORDER BY po.is_primary DESC, po.id)
+         FROM property_owners po JOIN clients oc ON oc.id = po.client_id
+         WHERE po.property_id = p.id AND po.removed_at IS NULL),
+        '[]'
+      ) AS owners_raw,
+      COALESCE(
+        (SELECT json_agg(json_build_object('id', oc.id, 'name', oc.name, 'phone', oc.phone, 'since', po.created_at, 'until', po.removed_at) ORDER BY po.created_at ASC)
+         FROM property_owners po JOIN clients oc ON oc.id = po.client_id
+         WHERE po.property_id = p.id),
+        '[]'
+      ) AS owner_history
+    FROM properties p
+    JOIN real_estate_units u ON u.id = p.unit_id
+    LEFT JOIN partner_agencies pa ON pa.id = p.partner_agency_id
+    LEFT JOIN LATERAL (
+      SELECT * FROM contracts c2
+      WHERE c2.property_id = p.id
+        AND c2.is_deleted = FALSE
+        AND (
+          -- client_id가 지정되면 정확히 그 계약(그 시점 그대로)을, 아니면 현재 진행 중인 계약을 사용
+          (${contextClientId}::int IS NOT NULL AND c2.client_id = ${contextClientId})
+          OR (${contextClientId}::int IS NULL AND (c2.balance_date IS NULL OR c2.balance_date >= now()))
+        )
+      ORDER BY c2.created_at DESC
+      LIMIT 1
+    ) c ON true
+    LEFT JOIN clients seller_client ON seller_client.id = c.seller_client_id_snapshot
+    WHERE p.id = ${id}
+  `;
 
-  const row = rowResult[0];
   if (!row) {
     return new Response(JSON.stringify({ error: "해당 매물을 찾을 수 없습니다." }), { status: 404 });
   }
 
-  // 소유자 주민번호 마스킹 + 매도인 주민번호 마스킹도 동시에 처리
+  // 주민번호 복호화(마스킹)는 네트워크 왕복이 아니라 로컬 연산이라 빠름 - 소유자들 + 매도인 동시에 처리
   const [ownersSafe, final_seller_ssn_masked] = await Promise.all([
     Promise.all(
-      owners.map(async (o) => {
+      (row.owners_raw || []).map(async (o) => {
         const { ssn_encrypted, ...rest } = o;
         const ssn_masked = ssn_encrypted ? await decryptToMasked(ssn_encrypted, env) : null;
         return { ...rest, ssn_masked };
       })
     ),
-    row.final_seller_client_id
-      ? sql`SELECT ssn_encrypted FROM clients WHERE id = ${row.final_seller_client_id}`.then(
-          async ([fc]) => (fc?.ssn_encrypted ? await decryptToMasked(fc.ssn_encrypted, env) : null)
-        )
-      : Promise.resolve(null),
+    row.final_seller_ssn_encrypted ? decryptToMasked(row.final_seller_ssn_encrypted, env) : Promise.resolve(null),
   ]);
 
-  return new Response(JSON.stringify({ ...row, final_seller_ssn_masked, owners: ownersSafe, owner_history: ownerHistory }), {
+  const { owners_raw, final_seller_ssn_encrypted, owner_history, ...restRow } = row;
+
+  return new Response(JSON.stringify({ ...restRow, final_seller_ssn_masked, owners: ownersSafe, owner_history }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
