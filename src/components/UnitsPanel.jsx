@@ -102,14 +102,17 @@ export default function UnitsPanel() {
   }
 
   function applyLookupUnit(u) {
+    const normalizedDong = u.dong ? (u.dong.endsWith("동") ? u.dong : u.dong + "동") : "";
     setForm((f) => ({
       ...f,
       property_type: guessPropertyType(lookupResult?.mainPurps) || f.property_type,
-      dong: u.dong ? (u.dong.endsWith("동") ? u.dong : u.dong + "동") : f.dong,
+      dong: normalizedDong || f.dong,
       ho: u.ho || f.ho,
       unit_sqm: u.sqm ? String(u.sqm) : f.unit_sqm, // 전용면적
       unit_supply_sqm: u.supplySqm ? String(u.supplySqm) : f.unit_supply_sqm, // 공급면적
       unit_type: (u.supplySqm || u.sqm) ? `${Math.round(((u.supplySqm || u.sqm) / PYEONG_TO_SQM) * 10) / 10}평` : f.unit_type,
+      // 상세주소도 "807동 101호"처럼 같이 채워줌 (비어있을 때만, 이미 직접 입력해둔 게 있으면 안 건드림)
+      address_detail: f.address_detail || [normalizedDong, u.ho ? `${u.ho}호` : ""].filter(Boolean).join(" "),
     }));
     setLookupResult(null);
   }
