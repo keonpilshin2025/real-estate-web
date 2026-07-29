@@ -17,7 +17,7 @@ export async function GET({ request }) {
       const rows = await sql`
         SELECT
           c.id, c.property_id, c.client_id, c.client_role, c.contract_type,
-          c.price, c.deposit, c.monthly_rent, c.down_payment, c.balance_amount,
+          c.price, c.deposit, c.monthly_rent, c.down_payment, c.interim_payment, c.interim_date, c.balance_amount,
           c.contract_date, c.balance_date, c.move_in_date, c.deal_status,
           c.partner_agency_id, c.brokerage_type, c.memo, c.created_at,
           u.property_name, u.dong AS property_dong, u.ho AS property_ho, u.unit_type AS property_unit_type,
@@ -84,7 +84,7 @@ export async function POST({ request }) {
 
   const {
     property_id, client_id, client_role, contract_type,
-    price, deposit, monthly_rent, down_payment, balance_amount,
+    price, deposit, monthly_rent, down_payment, interim_payment, interim_date, balance_amount,
     contract_date, balance_date, move_in_date, memo,
     partner_agency_id, deal_status,
   } = body;
@@ -140,13 +140,13 @@ export async function POST({ request }) {
     const [row] = await sql`
       INSERT INTO contracts
         (property_id, client_id, client_role, contract_type,
-         price, deposit, monthly_rent, down_payment, balance_amount,
+         price, deposit, monthly_rent, down_payment, interim_payment, interim_date, balance_amount,
          contract_date, balance_date, move_in_date, memo,
          partner_agency_id, brokerage_type, deal_status,
          seller_address_snapshot, buyer_address_snapshot, seller_name_snapshot, seller_phone_snapshot, seller_client_id_snapshot)
       VALUES
         (${property_id}, ${client_id}, ${client_role}, ${contract_type},
-         ${toInt(price)}, ${toInt(deposit)}, ${toInt(monthly_rent)}, ${toInt(down_payment)}, ${toInt(balance_amount)},
+         ${toInt(price)}, ${toInt(deposit)}, ${toInt(monthly_rent)}, ${toInt(down_payment)}, ${toInt(interim_payment)}, ${interim_date || null}, ${toInt(balance_amount)},
          ${contract_date || null}, ${balance_date || null}, ${move_in_date || null}, ${memo || null},
          ${partnerAgencyIdInt}, ${brokerageType}, ${status},
          ${sellerAddressSnapshot}, ${buyerAddressSnapshot}, ${sellerNameSnapshot}, ${sellerPhoneSnapshot}, ${sellerClientIdSnapshot})

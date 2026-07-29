@@ -105,7 +105,7 @@ export default function ClientPopup({ clientId, onClose, onSaved }) {
                 <Row label="예산범위" value={data.budget_range} />
                 <Row label="희망입주월" value={data.desired_move_in_month} />
                 <Row label="고객설명" value={data.description} multiline />
-                <Row label="주소" value={data.address} />
+                <Row label="주소" value={[data.address, data.address_detail].filter(Boolean).join(" ")} />
                 <Row label="비고" value={data.memo} multiline />
                 <div className="flex justify-end gap-2 mt-3">
                   <button onClick={() => setEditing(true)} className="bg-violet-400 text-white rounded-full h-9 px-4 font-medium hover:bg-violet-500">
@@ -152,6 +152,8 @@ export default function ClientPopup({ clientId, onClose, onSaved }) {
                   placeholder="고객설명" className="border border-slate-200 rounded-lg p-3 h-20" />
                 <input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })}
                   placeholder="주소" className="border border-slate-200 rounded-lg h-9 px-3" />
+                <input value={form.address_detail || ""} onChange={(e) => setForm({ ...form, address_detail: e.target.value })}
+                  placeholder="상세주소 (동/호수, 층 등)" className="border border-slate-200 rounded-lg h-9 px-3" />
                 <textarea value={form.memo || ""} onChange={(e) => setForm({ ...form, memo: e.target.value })}
                   placeholder="비고" className="border border-slate-200 rounded-lg p-3 h-16" />
                 <div className="flex justify-end gap-2 mt-2">

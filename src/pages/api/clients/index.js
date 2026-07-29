@@ -39,7 +39,7 @@ export async function POST({ request }) {
   const sql = getDb(env.DATABASE_URL);
   const body = await request.json();
   const {
-    name, phone, description, address, memo,
+    name, phone, description, address, address_detail, memo,
     transaction_type, budget_range, desired_move_in_month, ssn,
   } = body;
 
@@ -54,9 +54,9 @@ export async function POST({ request }) {
 
   const [row] = await sql`
     INSERT INTO clients
-      (name, phone, description, address, memo, transaction_type, budget_range, desired_move_in_month, ssn_encrypted)
+      (name, phone, description, address, address_detail, memo, transaction_type, budget_range, desired_move_in_month, ssn_encrypted)
     VALUES
-      (${name}, ${phone || null}, ${description || null}, ${address || null}, ${memo || null},
+      (${name}, ${phone || null}, ${description || null}, ${address || null}, ${address_detail || null}, ${memo || null},
        ${transaction_type || null}, ${budget_range || null}, ${desired_move_in_month || null}, ${ssnEncrypted})
     RETURNING *
   `;

@@ -27,7 +27,7 @@ export async function PUT({ request, params }) {
   const id = Number(params.id);
   const body = await request.json();
   const {
-    name, phone, description, address, memo,
+    name, phone, description, address, address_detail, memo,
     transaction_type, budget_range, desired_move_in_month, ssn,
   } = body;
 
@@ -42,7 +42,7 @@ export async function PUT({ request, params }) {
     ? await sql`
         UPDATE clients SET
           name = ${name}, phone = ${phone || null}, description = ${description || null},
-          address = ${address || null}, memo = ${memo || null},
+          address = ${address || null}, address_detail = ${address_detail || null}, memo = ${memo || null},
           transaction_type = ${transaction_type || null}, budget_range = ${budget_range || null},
           desired_move_in_month = ${desired_move_in_month || null},
           ssn_encrypted = ${ssnUpdateClause},
@@ -53,7 +53,7 @@ export async function PUT({ request, params }) {
     : await sql`
         UPDATE clients SET
           name = ${name}, phone = ${phone || null}, description = ${description || null},
-          address = ${address || null}, memo = ${memo || null},
+          address = ${address || null}, address_detail = ${address_detail || null}, memo = ${memo || null},
           transaction_type = ${transaction_type || null}, budget_range = ${budget_range || null},
           desired_move_in_month = ${desired_move_in_month || null},
           updated_at = now()

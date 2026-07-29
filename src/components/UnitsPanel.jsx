@@ -26,7 +26,7 @@ const EXCEL_COLUMNS = [
 
 const emptyForm = {
   property_name: "", property_type: "", dong: "", ho: "",
-  address: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "", usage_type: "",
+  address: "", address_detail: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "", usage_type: "",
 };
 
 export default function UnitsPanel() {
@@ -155,7 +155,7 @@ export default function UnitsPanel() {
   function handleNameChange(value) {
     if (value === "__other__") {
       setIsOtherName(true);
-      setForm({ ...form, property_name: "", dong: "", ho: "", address: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "" });
+      setForm({ ...form, property_name: "", dong: "", ho: "", address: "", address_detail: "", unit_type: "", unit_sqm: "", unit_supply_sqm: "" });
       return;
     }
     setIsOtherName(false);
@@ -165,6 +165,7 @@ export default function UnitsPanel() {
       property_name: value,
       property_type: "아파트",
       address: preset?.address || "",
+      address_detail: "",
       dong: "",
       ho: "",
       unit_type: "",
@@ -239,6 +240,7 @@ export default function UnitsPanel() {
       dong: u.dong || "",
       ho: u.ho || "",
       address: u.address || "",
+      address_detail: u.address_detail || "",
       unit_type: u.unit_type || "",
       unit_sqm: u.unit_sqm || "",
       unit_supply_sqm: u.unit_supply_sqm || "",
@@ -510,8 +512,10 @@ export default function UnitsPanel() {
 
               {/* 주소 */}
               <AddressField
-                value={form.address}
-                onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+                address={form.address}
+                addressDetail={form.address_detail}
+                onAddressChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+                onAddressDetailChange={(v) => setForm((f) => ({ ...f, address_detail: v }))}
                 readOnly={isKnown}
                 onSelectRaw={(data) => setAddressMeta({ bcode: data.bcode, jibunAddress: data.jibunAddress })}
               />

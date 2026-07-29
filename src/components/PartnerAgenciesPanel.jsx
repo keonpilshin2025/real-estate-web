@@ -4,7 +4,7 @@ import AddressField from "./AddressField.jsx";
 import PhoneInput from "./PhoneInput.jsx";
 import AreaCodePhoneInput from "./AreaCodePhoneInput.jsx";
 
-const emptyForm = { agency_name: "", phone: "", mobile_phone: "", address: "" };
+const emptyForm = { agency_name: "", phone: "", mobile_phone: "", address: "", address_detail: "" };
 
 const EXCEL_COLUMNS = [
   { key: "agency_name", label: "부동산명" },
@@ -94,6 +94,7 @@ export default function PartnerAgenciesPanel() {
       phone: a.phone || "",
       mobile_phone: a.mobile_phone || "",
       address: a.address || "",
+      address_detail: a.address_detail || "",
     });
     setEditingId(a.id);
     setShowForm(true);
@@ -187,7 +188,12 @@ export default function PartnerAgenciesPanel() {
                 className="col-span-2 border border-slate-200 rounded-lg h-9 px-3"
               />
 
-              <AddressField value={form.address} onChange={(addr) => setForm((f) => ({ ...f, address: addr }))} />
+              <AddressField
+                address={form.address}
+                addressDetail={form.address_detail}
+                onAddressChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+                onAddressDetailChange={(v) => setForm((f) => ({ ...f, address_detail: v }))}
+              />
 
               <div className="col-span-2 flex justify-end gap-2 mt-2">
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="border border-slate-200 rounded-full h-9 px-4 hover:bg-slate-50">취소</button>

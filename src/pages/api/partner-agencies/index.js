@@ -28,15 +28,15 @@ export async function GET({ request }) {
 export async function POST({ request }) {
   const sql = getDb(env.DATABASE_URL);
   const body = await request.json();
-  const { agency_name, phone, mobile_phone, address } = body;
+  const { agency_name, phone, mobile_phone, address, address_detail } = body;
 
   if (!agency_name) {
     return new Response(JSON.stringify({ error: "부동산명은 필수입니다." }), { status: 400 });
   }
 
   const [row] = await sql`
-    INSERT INTO partner_agencies (agency_name, phone, mobile_phone, address)
-    VALUES (${agency_name}, ${phone || null}, ${mobile_phone || null}, ${address || null})
+    INSERT INTO partner_agencies (agency_name, phone, mobile_phone, address, address_detail)
+    VALUES (${agency_name}, ${phone || null}, ${mobile_phone || null}, ${address || null}, ${address_detail || null})
     RETURNING *
   `;
 

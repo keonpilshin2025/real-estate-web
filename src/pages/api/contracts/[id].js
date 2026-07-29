@@ -36,7 +36,7 @@ export async function PUT({ request, params }) {
 
   const {
     property_id, client_id, client_role, contract_type,
-    price, deposit, monthly_rent, down_payment, balance_amount,
+    price, deposit, monthly_rent, down_payment, interim_payment, interim_date, balance_amount,
     contract_date, balance_date, move_in_date, memo,
     partner_agency_id, deal_status,
   } = body;
@@ -90,6 +90,8 @@ export async function PUT({ request, params }) {
         deposit = ${toInt(deposit)},
         monthly_rent = ${toInt(monthly_rent)},
         down_payment = ${toInt(down_payment)},
+        interim_payment = ${toInt(interim_payment)},
+        interim_date = ${interim_date || null},
         balance_amount = ${toInt(balance_amount)},
         contract_date = ${contract_date || null},
         balance_date = ${balance_date || null},

@@ -79,8 +79,10 @@ const EXCEL_COLUMNS = [
   },
   { key: "monthly_rent", label: "월세", format: (v) => (v ? formatEokMan(v) : "-") },
   { key: "down_payment", label: "계약금", format: (v) => formatEokMan(v) },
-  { key: "balance_amount", label: "잔금", format: (v) => formatEokMan(v) },
   { key: "contract_date", label: "계약일시", format: (v) => formatDateTimeStr(v) },
+  { key: "interim_payment", label: "중도금", format: (v) => (v ? formatEokMan(v) : "-") },
+  { key: "interim_date", label: "중도금일시", format: (v) => (v ? formatDateTimeStr(v) : "-") },
+  { key: "balance_amount", label: "잔금", format: (v) => formatEokMan(v) },
   { key: "balance_date", label: "잔금일시", format: (v) => formatDateTimeStr(v) },
   { key: "move_in_date", label: "계약만료일", format: (v) => (v ? String(v).slice(0, 10) : "-") },
   { key: "deal_status", label: "거래상태", format: (v) => v || "진행" },
@@ -160,7 +162,7 @@ function calcExpiry2Years(balanceDate) {
 
 const emptyForm = {
   property_id: "", client_id: "", client_role: "", contract_type: "",
-  price: "", deposit: "", monthly_rent: "", down_payment: "", balance_amount: "",
+  price: "", deposit: "", monthly_rent: "", down_payment: "", interim_payment: "", interim_date: "", balance_amount: "",
   contract_date: "", balance_date: "", move_in_date: "", memo: "",
   partner_agency_id: "", deal_status: "진행",
 };
@@ -383,8 +385,10 @@ export default function ContractMapping() {
 
   function recalcBalance(next) {
     const base = next.contract_type === "월세" ? next.deposit : next.price;
-    if (base && next.down_payment) {
-      next.balance_amount = String(Math.max(Number(base) - Number(next.down_payment), 0));
+    if (base) {
+      const downPayment = Number(next.down_payment || 0);
+      const interimPayment = Number(next.interim_payment || 0);
+      next.balance_amount = String(Math.max(Number(base) - downPayment - interimPayment, 0));
     } else {
       next.balance_amount = "";
     }
@@ -821,17 +825,23 @@ export default function ContractMapping() {
 
               {form.contract_type && (
                 <>
-                  <label className="text-slate-400 col-span-2 -mb-1">계약일시</label>
-                  <DateTime10Input value={form.contract_date} onChange={(v) => setForm({ ...form, contract_date: v })} />
-
                   <label className="text-slate-400 col-span-2 -mb-1">계약금 (매매대금/보증금의 10% 자동입력, 직접 수정 가능)</label>
                   <EokManInput value={form.down_payment} onChange={(v) => { setDownPaymentTouched(true); updateField("down_payment", v); }} />
 
+                  <label className="text-slate-400 col-span-2 -mb-1">계약일시</label>
+                  <DateTime10Input value={form.contract_date} onChange={(v) => setForm({ ...form, contract_date: v })} />
+
+                  <label className="text-slate-400 col-span-2 -mb-1">중도금 (선택, 정해진 금액 없음 — 입력하면 잔금에 자동 반영)</label>
+                  <EokManInput value={form.interim_payment} onChange={(v) => updateField("interim_payment", v)} />
+
+                  <label className="text-slate-400 col-span-2 -mb-1">중도금일시</label>
+                  <DateTime10Input value={form.interim_date} onChange={(v) => setForm({ ...form, interim_date: v })} />
+
+                  <label className="text-slate-400 col-span-2 -mb-1">잔금 (자동계산: 전체금액 - 계약금 - 중도금)</label>
+                  <EokManInput value={form.balance_amount} onChange={() => {}} readOnly />
+
                   <label className="text-slate-400 col-span-2 -mb-1">잔금일시</label>
                   <DateTime10Input value={form.balance_date} onChange={handleBalanceDateChange} />
-
-                  <label className="text-slate-400 col-span-2 -mb-1">잔금 (자동계산)</label>
-                  <EokManInput value={form.balance_amount} onChange={() => {}} readOnly />
 
                   {form.contract_type !== "매매" && (
                     <>

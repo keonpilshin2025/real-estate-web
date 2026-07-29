@@ -17,7 +17,7 @@ export async function GET({ request }) {
       p.id, p.unit_id, p.features, p.memo, p.transaction_type,
       p.asking_price, p.asking_deposit, p.asking_monthly_rent,
       p.partner_agency_id, p.created_at,
-      u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address,
+      u.property_name, u.property_type, u.dong, u.ho, u.unit_type, u.usage_type, u.address, u.address_detail,
       pa.agency_name AS partner_agency_name,
       latest_c.deal_status AS latest_deal_status,
       latest_c.balance_date AS latest_balance_date,

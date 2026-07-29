@@ -117,8 +117,10 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
 
   function recalcBalance(next) {
     const base = next.contract_type === "월세" ? next.deposit : next.price;
-    if (base && next.down_payment) {
-      next.balance_amount = String(Math.max(Number(base) - Number(next.down_payment), 0));
+    if (base) {
+      const downPayment = Number(next.down_payment || 0);
+      const interimPayment = Number(next.interim_payment || 0);
+      next.balance_amount = String(Math.max(Number(base) - downPayment - interimPayment, 0));
     } else {
       next.balance_amount = "";
     }
@@ -202,8 +204,10 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                 <Row label="금액" value={formatWon(data.contract_type === "월세" ? data.deposit : data.price)} />
                 {data.contract_type === "월세" && <Row label="월세" value={formatWon(data.monthly_rent)} />}
                 <Row label="계약금" value={formatWon(data.down_payment)} />
-                <Row label="잔금" value={formatWon(data.balance_amount)} />
                 <Row label="계약일시" value={data.contract_date ? String(data.contract_date).slice(0, 16).replace("T", " ") : "-"} />
+                {data.interim_payment ? <Row label="중도금" value={formatWon(data.interim_payment)} /> : null}
+                {data.interim_date ? <Row label="중도금일시" value={String(data.interim_date).slice(0, 16).replace("T", " ")} /> : null}
+                <Row label="잔금" value={formatWon(data.balance_amount)} />
                 <Row label="잔금일시" value={data.balance_date ? String(data.balance_date).slice(0, 16).replace("T", " ") : "-"} />
                 {data.contract_type !== "매매" && (
                   <Row label="계약만료일" value={formatDateOnly(data.move_in_date) || "-"} />
@@ -286,17 +290,23 @@ export default function ContractPopup({ contractId, onClose, onSaved }) {
                   </>
                 )}
 
-                <span className="text-slate-400">계약일시</span>
-                <DateTime10Input value={form.contract_date} onChange={(v) => setForm({ ...form, contract_date: v })} />
-
                 <span className="text-slate-400">계약금</span>
                 <EokManInput value={form.down_payment} onChange={(v) => setForm((prev) => recalcBalance({ ...prev, down_payment: v }))} />
 
+                <span className="text-slate-400">계약일시</span>
+                <DateTime10Input value={form.contract_date} onChange={(v) => setForm({ ...form, contract_date: v })} />
+
+                <span className="text-slate-400">중도금 (선택, 입력하면 잔금에 자동 반영)</span>
+                <EokManInput value={form.interim_payment} onChange={(v) => setForm((prev) => recalcBalance({ ...prev, interim_payment: v }))} />
+
+                <span className="text-slate-400">중도금일시</span>
+                <DateTime10Input value={form.interim_date} onChange={(v) => setForm({ ...form, interim_date: v })} />
+
+                <span className="text-slate-400">잔금 (자동계산: 전체금액 - 계약금 - 중도금)</span>
+                <EokManInput value={form.balance_amount} onChange={() => {}} readOnly />
+
                 <span className="text-slate-400">잔금일시</span>
                 <DateTime10Input value={form.balance_date} onChange={handleBalanceDateChange} />
-
-                <span className="text-slate-400">잔금 (자동계산)</span>
-                <EokManInput value={form.balance_amount} onChange={() => {}} readOnly />
 
                 {form.contract_type !== "매매" && (
                   <>

@@ -25,7 +25,7 @@ const EXCEL_COLUMNS = [
 ];
 
 const emptyForm = {
-  name: "", phone: "", description: "", address: "", memo: "",
+  name: "", phone: "", description: "", address: "", address_detail: "", memo: "",
   transaction_type: "", budget_range: "", desired_move_in_month: "", ssn: "",
 };
 
@@ -149,6 +149,7 @@ export default function ClientsPanel() {
       phone: c.phone || "",
       description: c.description || "",
       address: c.address || "",
+      address_detail: c.address_detail || "",
       memo: c.memo || "",
       transaction_type: c.transaction_type || "",
       budget_range: c.budget_range || "",
@@ -320,7 +321,12 @@ export default function ClientsPanel() {
               <p className="col-span-2 text-right text-slate-300 -mt-1">{form.description.length}/500</p>
 
               <label className="text-slate-400 col-span-2 -mb-1">(현) 주소 - 계약서용</label>
-              <AddressField value={form.address} onChange={(addr) => setForm((f) => ({ ...f, address: addr }))} />
+              <AddressField
+                address={form.address}
+                addressDetail={form.address_detail}
+                onAddressChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+                onAddressDetailChange={(v) => setForm((f) => ({ ...f, address_detail: v }))}
+              />
 
               <label className="text-slate-400 col-span-2 -mb-1">비고</label>
               <textarea

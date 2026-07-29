@@ -21,7 +21,7 @@ export async function PUT({ request, params }) {
   const sql = getDb(env.DATABASE_URL);
   const id = Number(params.id);
   const body = await request.json();
-  const { agency_name, phone, mobile_phone, address } = body;
+  const { agency_name, phone, mobile_phone, address, address_detail } = body;
 
   if (!agency_name) {
     return new Response(JSON.stringify({ error: "부동산명은 필수입니다." }), { status: 400 });
@@ -33,6 +33,7 @@ export async function PUT({ request, params }) {
       phone = ${phone || null},
       mobile_phone = ${mobile_phone || null},
       address = ${address || null},
+      address_detail = ${address_detail || null},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

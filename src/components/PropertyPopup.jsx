@@ -341,7 +341,7 @@ export default function PropertyPopup({ propertyId, contractClientId, onClose, o
                   </>
                 )}
 
-                <Row label="주소" value={data.address} />
+                <Row label="주소" value={[data.address, data.address_detail].filter(Boolean).join(" ")} />
                 <Row label="특장점" value={data.features} multiline />
                 <Row label="비고" value={data.memo} multiline />
                 <div className="flex justify-end gap-2 mt-3">
@@ -357,7 +357,7 @@ export default function PropertyPopup({ propertyId, contractClientId, onClose, o
                   <p className="text-slate-500">
                     {[data.property_type, data.dong, data.ho, data.unit_type].filter(Boolean).join(" · ")}
                   </p>
-                  <p className="text-slate-400">{data.address}</p>
+                  <p className="text-slate-400">{[data.address, data.address_detail].filter(Boolean).join(" ")}</p>
                   <p className="text-slate-400 mt-1">물건 정보(단지명·동·호수·평형·주소)는 "물건" 탭에서 수정하세요.</p>
                 </div>
 
