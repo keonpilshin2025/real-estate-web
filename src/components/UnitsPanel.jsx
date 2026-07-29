@@ -189,7 +189,10 @@ export default function UnitsPanel() {
   function handleUnitTypeChange(label) {
     const typeList = dongInfo?.unit_types || presets[form.property_name]?.dongs?.[dongList[0]]?.unit_types || [];
     const matched = typeList.find((t) => t.label === label);
-    setForm({ ...form, unit_type: label, unit_sqm: matched ? matched.sqm : form.unit_sqm });
+    // 3대장은 "평형" 라벨 자체가 공급면적 기준 표기라, 라벨 숫자로 공급면적을 역산해서 채움
+    const pyeongNum = parseFloat(label.replace("평", ""));
+    const supplySqm = !isNaN(pyeongNum) ? String(Math.round(pyeongNum * PYEONG_TO_SQM * 100) / 100) : form.unit_supply_sqm;
+    setForm({ ...form, unit_type: label, unit_sqm: matched ? matched.sqm : form.unit_sqm, unit_supply_sqm: supplySqm });
   }
 
   async function handleSubmit(e) {
