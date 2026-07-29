@@ -115,8 +115,9 @@ export async function GET({ request }) {
     const mainPurps = titleItems[0]?.etcPurps || titleItems[0]?.mainPurpsCdNm || "";
     const bldNm = titleItems[0]?.bldNm || "";
 
-    // 동/호수별로 정리 (전유 면적 위주로, 중복 제거)
-    // 동/호수별로 "전유" 면적과 "공용" 면적을 각각 합산 (같은 호수에 전유 행 여러 개 + 공용 행 여러 개가 따로 옴)
+    // 동/호수별로 "전유" 면적만 합산해서 사용 (전용면적).
+    // "공용" 면적은 정부 API가 주거공용/기타공용(주차장 등)을 구분 안 해줘서 합산 시 부풀려질 수 있어
+    // 공급면적 자동계산에는 안 씀 (필요하면 관리자가 직접 확인해서 입력)
     const unitMap = new Map();
     for (const it of exposItems) {
       const dongNmItem = it.dongNm || "";
@@ -124,20 +125,15 @@ export async function GET({ request }) {
       if (!dongNmItem && !hoNm) continue;
       const area = it.area ? Number(it.area) : 0;
       const gb = it.exposPubuseGbCdNm || it.exposPubuseGbCd || "";
+      if (gb.includes("공용")) continue; // 공용면적 행은 신뢰 못하니 아예 무시
       const key = `${dongNmItem}__${hoNm}`;
-      if (!unitMap.has(key)) unitMap.set(key, { dong: dongNmItem, ho: hoNm, exclusiveSqm: 0, commonSqm: 0 });
-      const u = unitMap.get(key);
-      if (gb.includes("공용")) {
-        u.commonSqm += area;
-      } else {
-        u.exclusiveSqm += area; // 분류가 안 잡히면 일단 전유로 취급
-      }
+      if (!unitMap.has(key)) unitMap.set(key, { dong: dongNmItem, ho: hoNm, exclusiveSqm: 0 });
+      unitMap.get(key).exclusiveSqm += area;
     }
     const units = Array.from(unitMap.values()).map((u) => ({
       dong: u.dong,
       ho: u.ho,
-      sqm: u.exclusiveSqm || null, // 전용면적
-      supplySqm: u.exclusiveSqm || u.commonSqm ? Math.round((u.exclusiveSqm + u.commonSqm) * 100) / 100 : null, // 공급면적(전유+공용 근사치)
+      sqm: u.exclusiveSqm || null, // 전용면적 (확실한 값)
     }));
 
     return new Response(JSON.stringify({ bldNm, mainPurps, units }), {

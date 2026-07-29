@@ -108,9 +108,8 @@ export default function UnitsPanel() {
       property_type: guessPropertyType(lookupResult?.mainPurps) || f.property_type,
       dong: normalizedDong || f.dong,
       ho: u.ho || f.ho,
-      unit_sqm: u.sqm ? String(u.sqm) : f.unit_sqm, // 전용면적
-      unit_supply_sqm: u.supplySqm ? String(u.supplySqm) : f.unit_supply_sqm, // 공급면적
-      unit_type: (u.supplySqm || u.sqm) ? `${Math.round(((u.supplySqm || u.sqm) / PYEONG_TO_SQM) * 10) / 10}평` : f.unit_type,
+      unit_sqm: u.sqm ? String(u.sqm) : f.unit_sqm, // 전용면적 (건축물대장 기준 확실한 값)
+      // 평형/공급면적은 건축물대장에서 신뢰할 만한 값을 못 가져와서 자동채움 안 함 (직접 입력 또는 네이버 등에서 확인 후 입력)
       // 상세주소도 "807동 101호"처럼 같이 채워줌 (비어있을 때만, 이미 직접 입력해둔 게 있으면 안 건드림)
       address_detail: f.address_detail || [normalizedDong, u.ho ? (u.ho.endsWith("호") ? u.ho : `${u.ho}호`) : ""].filter(Boolean).join(" "),
     }));
@@ -189,9 +188,17 @@ export default function UnitsPanel() {
   function handleUnitTypeChange(label) {
     const typeList = dongInfo?.unit_types || presets[form.property_name]?.dongs?.[dongList[0]]?.unit_types || [];
     const matched = typeList.find((t) => t.label === label);
-    // 3대장은 "평형" 라벨 자체가 공급면적 기준 표기라, 라벨 숫자로 공급면적을 역산해서 채움
-    const pyeongNum = parseFloat(label.replace("평", ""));
-    const supplySqm = !isNaN(pyeongNum) ? String(Math.round(pyeongNum * PYEONG_TO_SQM * 100) / 100) : form.unit_supply_sqm;
+
+    // 프리셋에 정확한 공급면적(supply_sqm)이 있으면 그걸 그대로 씀 (센트럴타운처럼 실측 데이터 확보된 단지)
+    // 없으면 "평형 라벨 = 공급면적 기준"이라는 전제로 라벨 숫자에서 역산 (산들마을/연꽃마을 등 아직 실측 데이터 없는 단지용 임시값)
+    let supplySqm = form.unit_supply_sqm;
+    if (matched?.supply_sqm) {
+      supplySqm = String(matched.supply_sqm);
+    } else {
+      const pyeongNum = parseFloat(label.replace("평", ""));
+      if (!isNaN(pyeongNum)) supplySqm = String(Math.round(pyeongNum * PYEONG_TO_SQM * 100) / 100);
+    }
+
     setForm({ ...form, unit_type: label, unit_sqm: matched ? matched.sqm : form.unit_sqm, unit_supply_sqm: supplySqm });
   }
 
@@ -561,6 +568,9 @@ export default function UnitsPanel() {
                       <div className="bg-violet-50 px-3 py-2 text-violet-700 font-medium">
                         {lookupResult.bldNm || "건물"} · {lookupResult.mainPurps || "용도 확인 필요"} — 호수를 선택하세요 ({lookupResult.units.length}건)
                       </div>
+                      <p className="px-3 py-1.5 text-slate-400 bg-slate-50 border-b border-slate-100">
+                        전용면적만 정확히 가져와요. 평형·공급면적은 네이버부동산 등에서 확인하고 직접 입력해주세요.
+                      </p>
                       <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
                         {sortUnits(lookupResult.units).map((u, i) => (
                           <div
@@ -570,8 +580,7 @@ export default function UnitsPanel() {
                           >
                             <span>{[u.dong, u.ho].filter(Boolean).join(" ") || "동/호 정보 없음"}</span>
                             <span className="text-slate-400">
-                              {u.supplySqm ? `${u.supplySqm}㎡` : u.sqm ? `${u.sqm}㎡` : "-"}
-                              {u.supplySqm && u.sqm ? ` (전용 ${u.sqm}㎡)` : ""}
+                              {u.sqm ? `전용 ${u.sqm}㎡` : "-"}
                             </span>
                           </div>
                         ))}
