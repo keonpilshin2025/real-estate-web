@@ -23,7 +23,11 @@ export default function AddressSearchButton({ onSelect, onSelectRaw, className =
       await loadDaumPostcodeScript();
       new window.daum.Postcode({
         oncomplete: (data) => {
-          const addr = data.roadAddress || data.jibunAddress;
+          let addr = data.roadAddress || data.jibunAddress;
+          // 검색결과 목록에 "(산들마을)"처럼 나오는 건물명을 그대로 붙여줌 (건물명이 있을 때만)
+          if (data.buildingName) {
+            addr += ` (${data.buildingName})`;
+          }
           onSelect(addr);
           if (onSelectRaw) onSelectRaw(data);
         },
