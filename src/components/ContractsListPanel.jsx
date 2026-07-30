@@ -187,7 +187,7 @@ export default function ContractsListPanel() {
   const [exporting, setExporting] = useState(false);
   const [sortField, setSortField] = useState(null); // null(기본: 진행상태 우선) | "balance_date" | "move_in_date"
   const [sortDir, setSortDir] = useState("asc");
-  const [statusFilter, setStatusFilter] = useState("전체"); // 전체 | 진행 | 완료
+  const [statusFilter, setStatusFilter] = useState("진행"); // 전체 | 진행 | 완료 (기본값: 진행)
 
   function applyFilterAndSort(list) {
     const filtered =

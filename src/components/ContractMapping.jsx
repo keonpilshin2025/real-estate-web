@@ -173,7 +173,7 @@ export default function ContractMapping() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [balanceSortDir, setBalanceSortDir] = useState("asc");
-  const [statusFilter, setStatusFilter] = useState("전체"); // 전체 | 진행 | 완료
+  const [statusFilter, setStatusFilter] = useState("진행"); // 전체 | 진행 | 완료 (기본값: 진행)
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);

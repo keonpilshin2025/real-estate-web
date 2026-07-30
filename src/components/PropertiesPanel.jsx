@@ -111,7 +111,7 @@ export default function PropertiesPanel() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState("전체"); // 전체 | 진행 | 완료
+  const [statusFilter, setStatusFilter] = useState("진행"); // 전체 | 진행 | 완료 (기본값: 진행)
   const [baseProperties, setBaseProperties] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [openDetailId, setOpenDetailId] = useState(null);
