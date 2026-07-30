@@ -84,7 +84,7 @@ export async function POST({ request }) {
 
   const {
     property_id, client_id, client_role, contract_type,
-    price, deposit, monthly_rent, down_payment, interim_payment, interim_date, balance_amount,
+    price, deposit, monthly_rent, down_payment, interim_payment, interim_date,
     contract_date, balance_date, move_in_date, memo,
     partner_agency_id, deal_status,
   } = body;
@@ -100,6 +100,17 @@ export async function POST({ request }) {
   const partnerAgencyIdInt = toInt(partner_agency_id);
   const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
   const status = deal_status || "진행";
+
+  // 잔금 = base(월세는 보증금, 매매/전세는 매매대금/보증금) - 계약금 - 중도금
+  // 프론트에서 계산해서 보내주는 값(body.balance_amount)은 신뢰하지 않고 서버에서 직접 재계산한다.
+  const priceInt = toInt(price);
+  const depositInt = toInt(deposit);
+  const downPaymentInt = toInt(down_payment) || 0;
+  const interimPaymentInt = toInt(interim_payment) || 0;
+  const balanceBase = contract_type === "월세" ? depositInt : priceInt;
+  const balanceAmount = balanceBase != null
+    ? Math.max(balanceBase - downPaymentInt - interimPaymentInt, 0)
+    : null;
 
   // 매도(임대)인 이름/연락처/주소 스냅샷: 이 계약의 고객이 매도/임대 역할이면 그 고객 정보를,
   // 아니면(고객이 매수/임차 역할이면) 매물에 연동된 소유자(공동명의 시 대표 소유자)의 정보를 사용
@@ -146,7 +157,7 @@ export async function POST({ request }) {
          seller_address_snapshot, buyer_address_snapshot, seller_name_snapshot, seller_phone_snapshot, seller_client_id_snapshot)
       VALUES
         (${property_id}, ${client_id}, ${client_role}, ${contract_type},
-         ${toInt(price)}, ${toInt(deposit)}, ${toInt(monthly_rent)}, ${toInt(down_payment)}, ${toInt(interim_payment)}, ${interim_date || null}, ${toInt(balance_amount)},
+         ${priceInt}, ${depositInt}, ${toInt(monthly_rent)}, ${downPaymentInt}, ${interimPaymentInt}, ${interim_date || null}, ${balanceAmount},
          ${contract_date || null}, ${balance_date || null}, ${move_in_date || null}, ${memo || null},
          ${partnerAgencyIdInt}, ${brokerageType}, ${status},
          ${sellerAddressSnapshot}, ${buyerAddressSnapshot}, ${sellerNameSnapshot}, ${sellerPhoneSnapshot}, ${sellerClientIdSnapshot})

@@ -36,7 +36,7 @@ export async function PUT({ request, params }) {
 
   const {
     property_id, client_id, client_role, contract_type,
-    price, deposit, monthly_rent, down_payment, interim_payment, interim_date, balance_amount,
+    price, deposit, monthly_rent, down_payment, interim_payment, interim_date,
     contract_date, balance_date, move_in_date, memo,
     partner_agency_id, deal_status,
   } = body;
@@ -44,6 +44,17 @@ export async function PUT({ request, params }) {
   const toInt = (v) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
   const partnerAgencyIdInt = toInt(partner_agency_id);
   const brokerageType = partnerAgencyIdInt ? "공동" : "단독";
+
+  // 잔금 = base(월세는 보증금, 매매/전세는 매매대금/보증금) - 계약금 - 중도금
+  // 프론트에서 계산해서 보내주는 값(body.balance_amount)은 신뢰하지 않고 서버에서 직접 재계산한다.
+  const priceInt = toInt(price);
+  const depositInt = toInt(deposit);
+  const downPaymentInt = toInt(down_payment) || 0;
+  const interimPaymentInt = toInt(interim_payment) || 0;
+  const balanceBase = contract_type === "월세" ? depositInt : priceInt;
+  const balanceAmount = balanceBase != null
+    ? Math.max(balanceBase - downPaymentInt - interimPaymentInt, 0)
+    : null;
 
   // 매도(임대)인 이름/연락처/주소 스냅샷 재계산 (수정 시점 기준으로 다시 고정)
   const isSeller = client_role === "매도인" || client_role === "임대인";
@@ -86,13 +97,13 @@ export async function PUT({ request, params }) {
         client_id = ${client_id},
         client_role = ${client_role},
         contract_type = ${contract_type},
-        price = ${toInt(price)},
-        deposit = ${toInt(deposit)},
+        price = ${priceInt},
+        deposit = ${depositInt},
         monthly_rent = ${toInt(monthly_rent)},
-        down_payment = ${toInt(down_payment)},
-        interim_payment = ${toInt(interim_payment)},
+        down_payment = ${downPaymentInt},
+        interim_payment = ${interimPaymentInt},
         interim_date = ${interim_date || null},
-        balance_amount = ${toInt(balance_amount)},
+        balance_amount = ${balanceAmount},
         contract_date = ${contract_date || null},
         balance_date = ${balance_date || null},
         move_in_date = ${move_in_date || null},
