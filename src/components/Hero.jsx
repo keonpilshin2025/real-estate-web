@@ -17,10 +17,10 @@ export default function Hero({ contact = "031-721-0082" }) {
 
       <div className="flex flex-col sm:flex-row justify-center gap-3">
         <a
-          href="#inquiry"
+          href="/tax-calculator"
           className="bg-violet-400 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-violet-500 transition shadow-sm"
         >
-          우선 매물 안내받기
+          양도세/종부세 계산기
         </a>
         <a
           href={`tel:${contact}`}

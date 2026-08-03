@@ -1,0 +1,31 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/container.astro";
+import TaxCalculator from "../components/TaxCalculator.jsx";
+---
+<Layout
+  title="세금계산기"
+  description="여수동 센트럴타운·연꽃마을·산들마을 아파트 매매·보유 시 예상 양도소득세·종합부동산세를 간편하게 계산해보세요. 센트럴부동산 제공."
+>
+  <Container>
+    <header class="flex items-center justify-between my-6">
+      <a href="/" class="flex items-center gap-2.5">
+        <span class="flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-400 text-white font-bold text-base shrink-0 shadow-sm">센</span>
+        <span class="flex flex-col leading-none">
+          <span class="font-bold text-slate-800 text-xl tracking-tight">센트럴</span>
+          <span class="text-[10px] text-slate-400 tracking-wider font-medium mt-0.5">공인중개사 사무소</span>
+        </span>
+      </a>
+      <a href="/" class="text-sm text-slate-500 hover:text-violet-500 transition">← 홈으로</a>
+    </header>
+
+    <main class="max-w-4xl mx-auto pb-20">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">양도세/종합부동산세 계산하기</h1>
+      <p class="text-slate-500 mb-10">
+        매매·보유 시 예상 양도소득세·종합부동산세를 간편하게 계산해보세요.
+      </p>
+
+      <TaxCalculator client:load />
+    </main>
+  </Container>
+</Layout>
